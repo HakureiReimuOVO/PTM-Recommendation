@@ -1,3 +1,4 @@
-/data/cleaned_metadata.json
-/data/torrent_embeddings.pkl
-/test.py
+/torrent_data/cleaned_metadata.json
+/torrent_data/torrent_embeddings.pkl
+/sample.py
+/LogME/

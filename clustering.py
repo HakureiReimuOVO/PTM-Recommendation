@@ -3,7 +3,7 @@
     {
     'id': 'albert-base-v1',
     'LatestGitCommitSHA': 'aeffd769076a5c4f83b2546aea99ca45a15a5da4',
-    'ModelHub': {'MetadataFilePath': 'data/huggingface/json/metadata/hf_metadata.json',
+    'ModelHub': {'MetadataFilePath': 'torrent_data/huggingface/json/metadata/hf_metadata.json',
                  'MetadataObjectID': 'albert-base-v1', 'ModelHubName': 'Hugging Face',
                  'ModelHubURL': 'https://huggingface.co/'},
     'ModelName': 'albert-base-v1',
@@ -55,8 +55,8 @@ from sklearn.cluster import KMeans, DBSCAN
 from sklearn.decomposition import PCA
 from embedding import embed_attribute, embed_torrents
 
-FILE_PATH = 'data/cleaned_metadata.json'
-SAVE_PATH = 'data/torrent_embeddings.pkl'
+FILE_PATH = 'torrent_data/cleaned_metadata.json'
+SAVE_PATH = 'torrent_data/torrent_embeddings.pkl'
 
 
 def _cluster_torrents(torrents, method='KMeans', num_of_clusters=10):

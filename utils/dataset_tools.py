@@ -3,7 +3,7 @@
     {
     'id': 'albert-base-v1',
     'LatestGitCommitSHA': 'aeffd769076a5c4f83b2546aea99ca45a15a5da4',
-    'ModelHub': {'MetadataFilePath': 'data/huggingface/json/metadata/hf_metadata.json',
+    'ModelHub': {'MetadataFilePath': 'torrent_data/huggingface/json/metadata/hf_metadata.json',
                  'MetadataObjectID': 'albert-base-v1', 'ModelHubName': 'Hugging Face',
                  'ModelHubURL': 'https://huggingface.co/'},
     'ModelName': 'albert-base-v1',
@@ -39,7 +39,7 @@
 """
 import json
 
-DATA_PATH = '../data/cleaned_metadata.json'
+DATA_PATH = '../torrent_data/cleaned_metadata.json'
 
 
 def get_top_k_downloads_models(save_path: str, k=1000):
@@ -63,5 +63,5 @@ def print_model_downloads_count(data_path: str):
 
 
 if __name__ == '__main__':
-    # get_top_k_downloads_models('../data/top_1000_downloads_metadata.json', 1000)
-    print_model_downloads_count('../data/top_1000_downloads_metadata.json')
+    # get_top_k_downloads_models('../torrent_data/top_1000_downloads_metadata.json', 1000)
+    print_model_downloads_count('../torrent_data/top_1000_downloads_metadata.json')
