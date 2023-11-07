@@ -39,7 +39,7 @@
 """
 import json
 
-DATA_PATH = '../torrent_data/cleaned_metadata.json'
+DATA_PATH = 'torrent_data/cleaned_metadata.json'
 
 
 def get_top_k_downloads_models(save_path: str, k=1000):
@@ -64,4 +64,4 @@ def print_model_downloads_count(data_path: str):
 
 if __name__ == '__main__':
     # get_top_k_downloads_models('../torrent_data/top_1000_downloads_metadata.json', 1000)
-    print_model_downloads_count('../torrent_data/top_1000_downloads_metadata.json')
+    print_model_downloads_count('torrent_data/top_1000_downloads_metadata.json')
