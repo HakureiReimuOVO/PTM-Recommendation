@@ -13,7 +13,6 @@ def get_obj(path):
     try:
         with open(path, 'r') as f:
             obj = json.load(f)
-            print(obj)
             return obj
     except FileNotFoundError:
         return {}

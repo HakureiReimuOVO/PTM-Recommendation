@@ -4,13 +4,6 @@ from datasets import load_dataset, load_from_disk
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 
-# Configuration
-default_transform = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-])
-
 
 class HFDataset(Dataset):
     def __init__(self, data_list, image_key, label_key, transform=None, processor=None):
@@ -38,11 +31,16 @@ def get_hf_data_loader(dataset_name,
                        image_key='image',
                        label_key='label',
                        batch_size=16,
-                       transform=default_transform,
+                       image_size=224,
                        processor=None,
                        print_info=False,
                        test=False):
     dataset = load_from_disk(f'datasets/{dataset_name}')['train']
+    transform = transforms.Compose([
+        transforms.Resize((image_size, image_size)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
     if test:
         dataset = dataset.select(list(range(64)))
     if print_info:

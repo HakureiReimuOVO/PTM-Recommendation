@@ -49,12 +49,12 @@ def scoring(model_name, dataset_name, model, data_loader):
         model = model.cuda()
 
     # Different models has different linear projection names
-    if model_name in ['microsoft/resnet-18', 'microsoft/resnet-50']:
-        fc_layer = model.classifier[-1]
-    elif model_name in ['nateraw/vit-age-classifier', 'google/vit-base-patch16-224',
-                        'microsoft/beit-base-patch16-224-pt22k-ft22k']:
-        fc_layer = model.classifier
-    else:
+    try:
+        if model_name in ['microsoft/resnet-18', 'microsoft/resnet-50']:
+            fc_layer = model.classifier[-1]
+        else:
+            fc_layer = model.classifier
+    except Exception:
         raise NotImplementedError
 
     print('Conducting features extraction...')
@@ -63,8 +63,12 @@ def scoring(model_name, dataset_name, model, data_loader):
     print('Conducting transferability calculation...')
     logme = LogME(regression=False)
     score_logme = logme.fit(features.numpy(), targets.numpy())
+    # score_leep = LEEP(features.numpy(), targets.numpy())
+    # score_nce = NCE(features.numpy(), targets.numpy())
 
     print(f'LogME of {model_name}: {score_logme}\n')
+    # print(f'LEEP of {model_name}: {score_leep}\n')
+    # print(f'NCE of {model_name}: {score_nce}\n')
 
     # Replace / with _ to avoid file path confusion
     model_name = model_name.replace('/', '_')
@@ -92,7 +96,7 @@ if __name__ == '__main__':
 
     for dataset in dataset_configs:
         score_data_loader = get_hf_data_loader(dataset_name=dataset['name'], image_key=dataset['image_key'],
-                                               label_key=dataset['label_key'], batch_size=32)
+                                               label_key=dataset['label_key'], batch_size=32, test=True)
         score_dict = {}
         for model in model_configs:
             score_model, _ = get_hf_model_and_processor(model_name=model)
