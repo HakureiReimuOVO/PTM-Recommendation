@@ -44,3 +44,50 @@ model_configs = ['Zetatech/pvt-tiny-224', 'akahana/vit-base-cats-vs-dogs', 'appl
                  'nvidia/mit-b2', 'nvidia/mit-b3', 'nvidia/mit-b4', 'nvidia/mit-b5', 'openai/clip-vit-large-patch14',
                  'sail/poolformer_s12', 'shehan97/mobilevitv2-1.0-imagenet1k-256', 'shi-labs/dinat-mini-in1k-224',
                  'shi-labs/nat-mini-in1k-224', 'vesteinn/vit-mae-cub']
+
+dataset_configs = [
+    {
+        'name': 'cifar10',
+        'image_key': 'img',
+        'label_key': 'label',
+        'num_rows': 50000
+    },
+    {
+        'name': 'cifar100',
+        'image_key': 'img',
+        'label_key': 'fine_label',
+        'num_rows': 50000
+    },
+    {
+        'name': 'beans',
+        'image_key': 'image',
+        'label_key': 'labels',
+        'num_rows': 1034
+    },
+    {
+        'name': 'Matthijs/snacks',
+        'image_key': 'image',
+        'label_key': 'label',
+        'num_rows': 4838
+    },
+    {
+        'name': 'sasha/dog-food',
+        'image_key': 'image',
+        'label_key': 'label',
+        'num_rows': 2100
+    },
+    {
+        'name': 'nelorth/oxford-flowers',
+        'image_key': 'image',
+        'label_key': 'label',
+        'num_rows': 7169
+    },
+    {
+        'name': 'cats_vs_dogs',
+        'image_key': 'image',
+        'label_key': 'labels',
+        'num_rows': 23410
+    }
+]
+
+chunk_size = 1000

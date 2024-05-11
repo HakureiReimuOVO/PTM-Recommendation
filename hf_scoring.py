@@ -1,8 +1,9 @@
 import torch
 import os
 import utils
+import numpy as np
 from tqdm import tqdm
-from LogME.LogME import LogME
+from LogME.LogME import LogME 
 from LogME.LEEP import LEEP
 from LogME.NCE import NCE
 from hf_dataset import get_hf_data_loader
@@ -63,12 +64,12 @@ def scoring(model_name, dataset_name, model, data_loader):
     print('Conducting transferability calculation...')
     logme = LogME(regression=False)
     score_logme = logme.fit(features.numpy(), targets.numpy())
-    # score_leep = LEEP(features.numpy(), targets.numpy())
-    # score_nce = NCE(features.numpy(), targets.numpy())
+    score_leep = LEEP(features.numpy(), targets.numpy())
+    score_nce = NCE(np.argmax(features.numpy(), axis=1), targets.numpy())
 
-    print(f'LogME of {model_name}: {score_logme}\n')
-    # print(f'LEEP of {model_name}: {score_leep}\n')
-    # print(f'NCE of {model_name}: {score_nce}\n')
+    print(f'LogME of {model_name}: {score_logme}')
+    print(f'LEEP of {model_name}: {score_leep}')
+    print(f'NCE of {model_name}: {score_nce}')
 
     # Replace / with _ to avoid file path confusion
     model_name = model_name.replace('/', '_')

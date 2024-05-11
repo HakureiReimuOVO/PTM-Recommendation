@@ -14,7 +14,6 @@ from transformers import (AutoModel,
 #     # 'nateraw/vit-age-classifier',  # model.classifier
 #     # 'google/vit-base-patch16-224',  # model.classifier
 #     # 'microsoft/beit-base-patch16-224-pt22k-ft22k',  # model.classifier
-#
 #     'facebook/convnext-tiny-224',  # model.classifier
 #     # 'microsoft/swin-tiny-patch4-window7-224'
 # ]
@@ -65,6 +64,16 @@ dataset_configs = [
         'image_key': 'image',
         'label_key': 'label'
     },
+    {
+        'name': 'nelorth/oxford-flowers',
+        'image_key': 'image',
+        'label_key': 'label'
+    },
+    {
+        'name': 'cats_vs_dogs',
+        'image_key': 'image',
+        'label_key': 'labels'
+    }
 ]
 
 
@@ -122,9 +131,21 @@ def _print_models():
         print('==========')
 
 
+def _print_datasets():
+    for dataset_config in dataset_configs:
+        local_dataset = load_from_disk(f"datasets/{dataset_config['name']}")['train']
+        print(dataset_config['name'])
+        print(local_dataset)
+        print('==========')
+
+
 if __name__ == '__main__':
-    # model = AutoModel.from_pretrained(model_configs[0])
+    # model = AutoModelForImageClassification.from_pretrained('microsoft/resnet-18')
+    # print(model)
     # save_to_local()
     # _test()
     # _print_models()
+    # dataset = load_dataset(f"datasets/sasha")['train']
+    _print_datasets()
+    # print(dataset)
     pass
