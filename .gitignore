@@ -1,6 +1,5 @@
-/LogME/
-/ptm_torrent/torrent_data/
 /datasets/
 /models/
+/features/
 /result/
-/test.py
+/old/

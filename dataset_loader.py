@@ -3,6 +3,7 @@ import torch
 from datasets import load_dataset, load_from_disk
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
+from config import root_path
 
 
 class HFDataset(Dataset):
@@ -35,7 +36,7 @@ def get_hf_data_loader(dataset_name,
                        processor=None,
                        print_info=False,
                        test=False):
-    dataset = load_from_disk(f'datasets/{dataset_name}')['train']
+    dataset = load_from_disk(dataset_name)
     transform = transforms.Compose([
         transforms.Resize((image_size, image_size)),
         transforms.ToTensor(),
