@@ -1,6 +1,10 @@
+import numpy as np
+
 from dataset_graph import GRAPH_OUTPUT_PATH, load_graph
 from config import dataset_configs
 from slice_dataset import get_all_datasets_and_idx
+
+META_FEATURE_PATH = 'meta_features/AutoSGR'
 
 
 def get_dataset_feature_vector(graph, dataset_name):
@@ -22,5 +26,5 @@ if __name__ == '__main__':
         items = get_all_datasets_and_idx(dataset_name=dataset_config['name'])
 
         for _, _, dataset_name in items:
-            f = get_dataset_feature_vector(G, dataset_name)
-            print(f'{dataset_name}: {f}')
+            meta_feature = get_dataset_feature_vector(G, dataset_name)
+            np.save(f'{META_FEATURE_PATH}/{dataset_name}', meta_feature)

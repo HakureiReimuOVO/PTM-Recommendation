@@ -9,8 +9,8 @@ from datasets import load_from_disk
 from config import *
 from torchvision import models, transforms
 
-from preprocess.feature_extraction import get_dataset_features
-from preprocess.slice_dataset import get_all_datasets_and_idx
+from feature_extraction import get_dataset_features
+from slice_dataset import get_all_datasets_and_idx
 
 DATASET_FEATURE_PATH = 'result/dataset_features.json'
 FEATURE_OUTPUT_PATH = 'result/label_features.npy'
