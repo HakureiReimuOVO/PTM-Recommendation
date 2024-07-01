@@ -1,12 +1,10 @@
 import os
 import config
 from torch.utils.data import DataLoader
-from model_loader import get_hf_model_and_processor
+from model_loader import get_model_and_processor
 from datasets import load_dataset, load_from_disk
 from transformers import AutoModel, AutoImageProcessor, AutoModelForImageClassification
-
-from .dataset_loader import HFDataset, get_hf_data_loader
-
+from dataset_loader import PreprocessedDataset, get_data_loader
 
 model_configs = config.model_configs
 dataset_configs = config.dataset_configs
@@ -52,7 +50,7 @@ def _test():
     model = AutoModelForImageClassification.from_pretrained(f"models/{model_name}")
     processor = AutoImageProcessor.from_pretrained(f"models/{model_name}")
 
-    score_dataset = HFDataset(
+    score_dataset = PreprocessedDataset(
         data_list=dataset,
         image_key=dataset_configs[0]["image_key"],
         label_key=dataset_configs[0]["label_key"],
@@ -64,7 +62,7 @@ def _test():
 
 def _print_models():
     for model_config in model_configs:
-        model, _ = get_hf_model_and_processor(model_config)
+        model, _ = get_model_and_processor(model_config)
         print(model)
         print("==========")
 

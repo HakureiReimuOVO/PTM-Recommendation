@@ -25,7 +25,6 @@ def make_meta_features(task_features) -> np.ndarray:
 # Preprocess image and extract the metafeature
 def extract_meta_features(dataset_images, preprocess, mnasnet_model, batch_size=64):
     meta_features_list = []
-    dataset_images = dataset_images[:64]
 
     for i in tqdm(range(0, len(dataset_images), batch_size)):
         batch_images = dataset_images[i:i + batch_size]
@@ -59,6 +58,9 @@ if __name__ == '__main__':
         for dataset, _, dataset_comb_name in tqdm(items):
             label_dict = dataset.features[label_key].names
             imgs = []
+
+            # Test option
+            # dataset = dataset.select(range(64))
 
             for idx, item in enumerate(dataset):
                 label = label_dict[item[label_key]]

@@ -1,7 +1,7 @@
 import os
 import config
 from torch.utils.data import DataLoader
-from model_loader import get_hf_model_and_processor
+from model_loader import get_model_and_processor
 from datasets import load_dataset, load_from_disk
 from transformers import AutoModel, AutoImageProcessor, AutoModelForImageClassification
 
@@ -64,7 +64,7 @@ def _test():
 
 def _print_models():
     for model_config in model_configs:
-        model, _ = get_hf_model_and_processor(model_config)
+        model, _ = get_model_and_processor(model_config)
         print(model)
         print("==========")
 

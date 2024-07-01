@@ -3,3 +3,8 @@
 /features/
 /result/
 /old/
+/preprocessed_datasets/
+/preprocessed_datasets_test/
+/meta_features/
+/train_logs/
+/metrics/
