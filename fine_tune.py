@@ -1,5 +1,5 @@
 import csv
-
+import gc
 import evaluate
 import torch.nn as nn
 import torch.optim as optim
@@ -59,22 +59,27 @@ def train_model_on_data_loader(model, train_loader, test_loader, num_epochs=10, 
 
         # TODO: Test
         model.eval()
+
+        total_val_loss = 0
         for batch in tqdm(test_loader):
             images, labels = batch
             images = images.to(device)
             labels = labels.to(device)
             with torch.no_grad():
                 outputs = model(images).logits
+                val_loss = criterion(outputs, labels).item()
+                total_val_loss += val_loss
                 predictions = torch.argmax(outputs, dim=-1)
                 metric.add_batch(predictions=predictions, references=labels)
 
+        avg_val_loss = total_val_loss / len(test_loader)
         eval_metric = metric.compute()
         accuracy = eval_metric['accuracy']
-        print(f"Validation Accuracy: {accuracy}")
+        print(f"Validation Accuracy: {accuracy}, Loss: {avg_val_loss}")
         if accuracy > best_accuracy:
             best_accuracy = accuracy
 
-        scheduler.step(avg_loss)
+        scheduler.step(avg_val_loss)
 
         if log_writer is not None:
             log_writer.writerow([model_name, epoch + 1, avg_loss, accuracy])
@@ -113,10 +118,14 @@ if __name__ == '__main__':
                         best_accuracy = train_model_on_data_loader(model, train_loader=train_loader,
                                                                    test_loader=test_loader,
                                                                    # Test
-                                                                   num_epochs=20,
+                                                                   num_epochs=15,
                                                                    model_name=model_config,
                                                                    dataset_name=dataset_fullname,
                                                                    log_writer=writer,
                                                                    log_file=file)
                         best_acc_writer.writerow([dataset_fullname, model_config, best_accuracy])
                         best_acc_file.flush()
+
+                        del model
+                        torch.cuda.empty_cache()
+                        gc.collect()
