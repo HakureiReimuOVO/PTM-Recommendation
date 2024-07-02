@@ -98,18 +98,18 @@ def get_all_datasets_and_idx(dataset_name, k=2):
 
 
 if __name__ == "__main__":
-    # _slice_dataset_by_label(2)
+    _slice_dataset_by_label(5)
     # dataset = load_from_disk(f"../preprocessed_datasets_test/cifar10_cat_dog")
     # for idx, example in enumerate(dataset):
     #     print(example)
 
-    items = get_all_datasets_and_idx(dataset_name='cifar10')
-    features = get_dataset_features(dataset_name='cifar10')
-
-    for dataset, index_map in items[:1]:
-        for idx, img in enumerate(dataset):
-            new_idx = index_map[idx]
-            print(idx, new_idx)
-            feature = features[new_idx]
-            print(img)
+    # items = get_all_datasets_and_idx(dataset_name='cifar10')
+    # features = get_dataset_features(dataset_name='cifar10')
+    #
+    # for dataset, index_map in items[:1]:
+    #     for idx, img in enumerate(dataset):
+    #         new_idx = index_map[idx]
+    #         print(idx, new_idx)
+    #         feature = features[new_idx]
+    #         print(img)
     pass

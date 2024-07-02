@@ -57,9 +57,6 @@ for dataset_config in dataset_configs:
         acc_list = list(accuracies.values())
         max_acc = max(acc_list)
 
-        tmp = acc_list.index(max_acc)
-        if tmp > 0:
-            tmp -= 1
 
         wd_list.append(meta_feature)
         y_list.append(acc_list.index(max_acc))
@@ -85,7 +82,6 @@ print(wd_list.shape)
 
 # (45)
 print(y_list.shape)
-
 print(y_list)
 
 
@@ -102,6 +98,7 @@ acc_list = []
 ndcg5_t = []
 mrr_t = []
 map_t = []
+
 # Select the meta learner to use Ensemble learning or not according to the task
 model = BaggingClassifier(base_estimator=SVC(probability=True), max_samples=0.8, max_features=0.8, n_estimators=100,
                           bootstrap_features=True, n_jobs=-1)
