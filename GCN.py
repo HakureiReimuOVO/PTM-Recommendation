@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.optim import Adam
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch_geometric.nn import GCNConv
 from torch.nn import Linear, MSELoss, CrossEntropyLoss
 from torch_geometric.data import Data
@@ -31,8 +32,8 @@ class GCN(torch.nn.Module):
         x = F.relu(self.conv4(x, edge_index))
 
         x = self.out(x)
-        # return x
-        return F.softmax(x, dim=1)
+        return x
+        # return F.softmax(x, dim=1)
 
 
 def from_networkx_to_torch_geometric(G, node_to_index, type_to_index, score_dict, num_classes=6):
@@ -69,10 +70,20 @@ def test(model, data, test_mask):
     with torch.no_grad():
         out = model(data)[test_mask]
         predicted = out.argmax(dim=1)
-        correct = (predicted == data.y[test_mask].argmax(dim=1)).sum().item()
+        correct = data.y[test_mask].argmax(dim=1)
+        correct_sum = (predicted == correct).sum().item()
         total = test_mask.sum().item()
-        accuracy = correct / total if total > 0 else 0
-    return accuracy
+        accuracy = correct_sum / total if total > 0 else 0
+
+        # Caculate RMV
+        real_acc = data.y[test_mask]
+        max_acc = torch.max(real_acc, dim=1).values
+        predicted_tmp = predicted.unsqueeze(1)
+        predicted_acc = torch.gather(real_acc, 1, predicted_tmp).squeeze(1)
+        rmv = predicted_acc / max_acc
+        avg_rmv = torch.mean(rmv)
+
+    return accuracy, avg_rmv
 
 
 def train(model, data, optimizer, criterion, train_mask):
@@ -80,14 +91,14 @@ def train(model, data, optimizer, criterion, train_mask):
     optimizer.zero_grad()
     out = model(data)[train_mask]
     # loss = criterion(out, data.y[train_mask].argmax(dim=1))
-    tmp = data.y[train_mask]
-    loss = criterion(out, tmp)
+    correct = data.y[train_mask]
+    loss = criterion(out, correct)
     loss.backward()
     optimizer.step()
     return loss.item()
 
 
-def split_data(G, test_ratio=0.2, seed=42):
+def split_data(G, test_ratio=0.2, seed=40):
     np.random.seed(seed)
     torch.manual_seed(seed)
 
@@ -122,17 +133,18 @@ if __name__ == '__main__':
     for node in G.nodes():
         if not G.nodes[node]['type'] == 'label':
             acc = extract_accuracies(node, 'cifar10_results')
-            vec = accuracies_to_classification_vector(acc, num_classes=6)
+            vec = accuracies_to_regression_vector(acc)
+            # vec = accuracies_to_classification_vector(acc, num_classes=6)
             score_dict[node] = vec
 
     data = from_networkx_to_torch_geometric(G, node_to_index, type_to_index, score_dict, num_classes=6)
 
     model = GCN(num_features=data.num_node_features, num_classes=6)
-    optimizer = Adam(model.parameters(), lr=1e-4)
+    optimizer = Adam(model.parameters(), lr=1e-3)
+    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True)
 
-    # criterion = MSELoss()
-
-    criterion = CrossEntropyLoss()
+    criterion = MSELoss()
+    # criterion = CrossEntropyLoss()
 
     # train_mask = torch.tensor([node_data['type'] == 'dataset' for node_id, node_data in G.nodes(data=True)],
     #                           dtype=torch.bool)
@@ -141,5 +153,6 @@ if __name__ == '__main__':
 
     for epoch in range(200):
         loss = train(model, data, optimizer, criterion, train_mask)
-        accuracy = test(model, data, test_mask)
-        print(f'Epoch {epoch + 1}: Loss {loss:.4f}, Test Accuracy: {accuracy * 100:.2f}%')
+        accuracy, rmv = test(model, data, test_mask)
+        print(f'Epoch {epoch + 1}: Loss {loss:.4f}, Test Accuracy: {accuracy * 100:.2f}%, RMV: {rmv * 100}%')
+        scheduler.step(loss)
