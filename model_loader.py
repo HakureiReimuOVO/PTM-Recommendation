@@ -1,6 +1,11 @@
 from transformers import AutoImageProcessor, AutoModelForImageClassification
 
 
+def get_model(model_name):
+    model = AutoModelForImageClassification.from_pretrained(f"models/{model_name}", ignore_mismatched_sizes=True)
+    return model
+
+
 def get_model_and_processor(model_name, num_labels=2, print_info=False):
     model = AutoModelForImageClassification.from_pretrained(f"models/{model_name}", num_labels=num_labels,
                                                             ignore_mismatched_sizes=True)
