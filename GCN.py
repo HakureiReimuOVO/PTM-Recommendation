@@ -21,19 +21,18 @@ class GCN(torch.nn.Module):
         self.out = Linear(2048, num_classes)
 
     def forward(self, data):
-        x, edge_index = data.x, data.edge_index
+        x, edge_index, edge_weight = data.x, data.edge_index, data.edge_attr
 
-        x = F.relu(self.conv1(x, edge_index))
+        x = F.relu(self.conv1(x, edge_index, edge_weight=edge_weight))
         x = F.dropout(x, training=self.training)
-        x = F.relu(self.conv2(x, edge_index))
+        x = F.relu(self.conv2(x, edge_index, edge_weight=edge_weight))
         x = F.dropout(x, training=self.training)
-        x = F.relu(self.conv3(x, edge_index))
+        x = F.relu(self.conv3(x, edge_index, edge_weight=edge_weight))
         x = F.dropout(x, training=self.training)
-        x = F.relu(self.conv4(x, edge_index))
+        x = F.relu(self.conv4(x, edge_index, edge_weight=edge_weight))
 
         x = self.out(x)
         return x
-        # return F.softmax(x, dim=1)
 
 
 def from_networkx_to_torch_geometric(G, node_to_index, type_to_index, score_dict, num_classes=6):
