@@ -1,12 +1,16 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch_geometric.nn import GCNConv
 from torch.nn import Linear, MSELoss, CrossEntropyLoss
 from torch_geometric.data import Data
-from config import model_configs
+from tqdm import tqdm
+
+from config import *
 from dataset_graph import load_graph, DATASET_GRAPH_OUTPUT_PATH
 from model_graph import MODEL_GRAPH_OUTPUT_PATH
 from acc_loader import *
@@ -14,23 +18,29 @@ from acc_loader import *
 
 class DatasetGraphGCN(torch.nn.Module):
     def __init__(self, num_features, output_size):
-        super(ModelGraphGCN, self).__init__()
+        super(DatasetGraphGCN, self).__init__()
         self.conv1 = GCNConv(num_features, 1024)
-        self.conv2 = GCNConv(1024, 2048)
-        self.conv3 = GCNConv(2048, 4096)
-        self.conv4 = GCNConv(4096, output_size)
+        self.conv2 = GCNConv(1024, output_size)
+        # self.conv2 = GCNConv(1024, 2048)
+        # self.conv3 = GCNConv(2048, 4096)
+        # self.conv4 = GCNConv(4096, output_size)
 
     def forward(self, data):
         x, edge_index, edge_weight = data.x, data.edge_index, data.edge_attr
         x = F.relu(self.conv1(x, edge_index, edge_weight=edge_weight))
         x = F.dropout(x, training=self.training)
-        x = F.relu(self.conv2(x, edge_index, edge_weight=edge_weight))
-        x = F.dropout(x, training=self.training)
-        x = F.relu(self.conv3(x, edge_index, edge_weight=edge_weight))
-        x = F.dropout(x, training=self.training)
-        x = F.relu(self.conv4(x, edge_index, edge_weight=edge_weight))
-        x = self.out(x)
+        x = self.conv2(x, edge_index, edge_weight=edge_weight)
         return x
+
+        # x, edge_index, edge_weight = data.x, data.edge_index, data.edge_attr
+        # x = F.relu(self.conv1(x, edge_index, edge_weight=edge_weight))
+        # x = F.dropout(x, training=self.training)
+        # x = F.relu(self.conv2(x, edge_index, edge_weight=edge_weight))
+        # x = F.dropout(x, training=self.training)
+        # x = F.relu(self.conv3(x, edge_index, edge_weight=edge_weight))
+        # x = F.dropout(x, training=self.training)
+        # x = self.conv4(x, edge_index, edge_weight=edge_weight)
+        # return x
 
 
 class ModelGraphGCN(torch.nn.Module):
@@ -43,25 +53,36 @@ class ModelGraphGCN(torch.nn.Module):
         x, edge_index, edge_weight = data.x, data.edge_index, data.edge_attr
         x = F.relu(self.conv1(x, edge_index, edge_weight=edge_weight))
         x = F.dropout(x, training=self.training)
-        x = F.relu(self.conv2(x, edge_index, edge_weight=edge_weight))
-        x = F.dropout(x, training=self.training)
-        x = F.relu(self.conv3(x, edge_index, edge_weight=edge_weight))
-        x = F.dropout(x, training=self.training)
-        x = F.relu(self.conv4(x, edge_index, edge_weight=edge_weight))
-        x = self.out(x)
+        x = self.conv2(x, edge_index, edge_weight=edge_weight)
         return x
 
 
 class RegressionModel(torch.nn.Module):
     def __init__(self, input_dim, output_dim):
         super(RegressionModel, self).__init__()
-        self.fc1 = Linear(input_dim, 512)
-        self.fc2 = Linear(512, output_dim)
+        self.fc1 = Linear(input_dim, 1024)
+        self.fc2 = Linear(1024, 2048)
+        self.fc3 = Linear(2048, 1024)
+        self.fc4 = Linear(1024, output_dim)
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
-        x = self.fc2(x)
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
+        x = torch.sigmoid(self.fc4(x))
         return x
+
+
+# class RegressionModel(torch.nn.Module):
+#     def __init__(self, input_dim, output_dim):
+#         super(RegressionModel, self).__init__()
+#         self.fc1 = Linear(input_dim, 512)
+#         self.fc2 = Linear(512, output_dim)
+#
+#     def forward(self, x):
+#         x = F.relu(self.fc1(x))
+#         x = torch.sigmoid(self.fc2(x))
+#         return x
 
 
 def graph_to_torch_geometric(G):
@@ -84,79 +105,34 @@ def graph_to_torch_geometric(G):
     return data
 
 
-def test(model, data, test_mask):
-    model.eval()
-    with torch.no_grad():
-        out = model(data)[test_mask]
-        predicted = out.argmax(dim=1)
-        correct = data.y[test_mask].argmax(dim=1)
-        correct_sum = (predicted == correct).sum().item()
-        total = test_mask.sum().item()
-        accuracy = correct_sum / total if total > 0 else 0
+def norm_acc(data):
+    acc_values = []
+    for dataset in data.values():
+        for acc in dataset.values():
+            acc_values.append(acc)
 
-        # Caculate RMV
-        real_acc = data.y[test_mask]
-        max_acc = torch.max(real_acc, dim=1).values
-        predicted_tmp = predicted.unsqueeze(1)
-        predicted_acc = torch.gather(real_acc, 1, predicted_tmp).squeeze(1)
-        rmv = predicted_acc / max_acc
-        avg_rmv = torch.mean(rmv)
+    acc_values = np.array(acc_values).reshape(-1, 1)
 
-    return accuracy, avg_rmv
+    # scaler = StandardScaler()
+    scaler = MinMaxScaler()
+    standardized_acc_values = scaler.fit_transform(acc_values)
 
+    index = 0
+    for dataset in data.values():
+        for model in dataset:
+            dataset[model] = standardized_acc_values[index, 0]
+            index += 1
 
-def train(model, data, optimizer, criterion, train_mask):
-    model.train()
-    optimizer.zero_grad()
-    out = model(data)[train_mask]
-    # loss = criterion(out, data.y[train_mask].argmax(dim=1))
-    correct = data.y[train_mask]
-    loss = criterion(out, correct)
-    loss.backward()
-    optimizer.step()
-    return loss.item()
-
-
-def split_data(G, test_ratio=0.2, seed=40):
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-
-    test_mask = torch.zeros(len(G.nodes()), dtype=torch.bool)
-    train_mask = torch.zeros(len(G.nodes()), dtype=torch.bool)
-
-    dataset_indices = [idx for idx, (node_id, node_data) in enumerate(G.nodes(data=True)) if
-                       node_data['type'] == 'dataset']
-
-    np.random.shuffle(dataset_indices)
-    num_test = int(len(dataset_indices) * test_ratio)
-
-    test_indices = dataset_indices[:num_test]
-    train_indices = dataset_indices[num_test:]
-
-    test_mask[test_indices] = True
-    train_mask[train_indices] = True
-
-    return train_mask, test_mask
+    return scaler
 
 
 if __name__ == '__main__':
-
-    # model_to_index = {model: idx for idx, model in enumerate(model_configs)}
-
     G_dataset = load_graph(DATASET_GRAPH_OUTPUT_PATH)
     G_model = load_graph(MODEL_GRAPH_OUTPUT_PATH)
 
-    score_dict = {}
-    for node in G_dataset.nodes():
-        if not G_dataset.nodes[node]['type'] == 'label':
-            acc = extract_accuracies(node, 'cifar10_results')
-            # vec = accuracies_to_regression_vector(acc)
-            vec = accuracies_to_classification_vector(acc)
-            score_dict[node] = vec
+    dataset_node_to_index = {node: idx for idx, node in enumerate(G_dataset.nodes())}
+    model_node_to_index = {node: idx for idx, node in enumerate(G_model.nodes())}
 
-    print(score_dict)
-
-    node_to_index = {node: idx for idx, node in enumerate(G_dataset.nodes())}
     dataset_data = graph_to_torch_geometric(G_dataset)
     model_data = graph_to_torch_geometric(G_model)
 
@@ -165,53 +141,97 @@ if __name__ == '__main__':
     regression_model = RegressionModel(1024, 1)
 
     optimizer = Adam([
-        {'params': dataset_GCN.parameters(), 'lr': 0.001},
-        {'params': model_GCN.parameters(), 'lr': 0.001},
-        {'params': regression_model.parameters(), 'lr': 0.001}
+        {'params': dataset_GCN.parameters(), 'lr': 0.0001},
+        {'params': model_GCN.parameters(), 'lr': 0.0001},
+        {'params': regression_model.parameters(), 'lr': 0.0001}
     ])
-
     scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True)
-
     criterion = MSELoss()
 
-    train_mask, test_mask = split_data(G_dataset)
+    input_tuples = []
 
-    for epoch in range(200):
-        loss = train(model, data, optimizer, criterion, train_mask)
-        accuracy, rmv = test(model, data, test_mask)
-        print(f'Epoch {epoch + 1}: Loss {loss:.4f}, Test Accuracy: {accuracy * 100:.2f}%, RMV: {rmv * 100}%')
+    for dataset_config in dataset_configs:
+        items = get_all_datasets_and_idx(dataset_name=dataset_config['name'])
+        for _, _, dataset_name in items:
+            for model_name in model_configs:
+                input_tuples.append((dataset_name, model_name))
+
+    acc = extract_accuracies('result/best_accuracies.csv')
+    # Normalize
+    scaler = norm_acc(acc)
+
+    # Test: Filter
+    # filtered_tuples = []
+    # for tuple in input_tuples:
+    #     d_name = tuple[0]
+    #     m_name = tuple[1]
+    #     if tuple[0] in acc:
+    #         if tuple[1] in acc[tuple[0]]:
+    #             filtered_tuples.append(tuple)
+    # input_tuples = filtered_tuples
+
+    train_tuples, test_tuples = train_test_split(input_tuples, test_size=0.2, random_state=42)
+
+    num_epochs = 200
+
+    for epoch in range(num_epochs):
+        # Train
+        dataset_GCN.train()
+        model_GCN.train()
+        regression_model.train()
+        train_loss = 0
+        batch_loss = 0
+
+        optimizer.zero_grad()
+
+        dataset_features = dataset_GCN(dataset_data)
+        model_features = model_GCN(model_data)
+
+        for dataset_name, model_name in tqdm(train_tuples):
+            f_dataset = dataset_features[dataset_node_to_index[dataset_name]]
+            f_model = model_features[model_node_to_index[model_name]]
+
+            combined_features = torch.cat([f_dataset, f_model], dim=0)
+
+            target = torch.tensor([acc[dataset_name][model_name]], dtype=torch.float)
+            output = regression_model(combined_features)
+
+            loss = criterion(output, target)
+
+            train_loss += loss.item()
+            batch_loss += loss
+
+        loss = train_loss / len(train_tuples)
+
+        batch_loss.backward()
+        optimizer.step()
         scheduler.step(loss)
 
-    # =======================================================================================
-    #
-    # node_to_index = {node: idx for idx, node in enumerate(G_dataset.nodes())}
-    # unique_types = set(G_dataset.nodes[node]['type'] for node in G_dataset.nodes())
-    # type_to_index = {type: idx for idx, type in enumerate(unique_types)}
-    #
-    # score_dict = {}
-    # for node in G_dataset.nodes():
-    #     if not G_dataset.nodes[node]['type'] == 'label':
-    #         acc = extract_accuracies(node, 'cifar10_results')
-    #         vec = accuracies_to_regression_vector(acc)
-    #         # vec = accuracies_to_classification_vector(acc, num_classes=6)
-    #         score_dict[node] = vec
-    #
-    # data = from_networkx_to_torch_geometric(G_dataset, node_to_index, type_to_index, score_dict, num_classes=6)
-    #
-    # model = ModelGraphGCN(num_features=data.num_node_features, output_size=6)
-    # optimizer = Adam(model.parameters(), lr=1e-3)
-    # scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True)
-    #
-    # criterion = MSELoss()
-    # # criterion = CrossEntropyLoss()
-    #
-    # # train_mask = torch.tensor([node_data['type'] == 'dataset' for node_id, node_data in G.nodes(data=True)],
-    # #                           dtype=torch.bool)
-    #
-    # train_mask, test_mask = split_data(G_dataset)
-    #
-    # for epoch in range(200):
-    #     loss = train(model, data, optimizer, criterion, train_mask)
-    #     accuracy, rmv = test(model, data, test_mask)
-    #     print(f'Epoch {epoch + 1}: Loss {loss:.4f}, Test Accuracy: {accuracy * 100:.2f}%, RMV: {rmv * 100}%')
-    #     scheduler.step(loss)
+        print(f'Epoch {epoch + 1}/{num_epochs}, Training loss: {loss}')
+
+        # Test
+        dataset_GCN.eval()
+        model_GCN.eval()
+        regression_model.eval()
+        test_loss = 0
+
+        with torch.no_grad():
+            for dataset_name, model_name in test_tuples:
+                dataset_features = dataset_GCN(dataset_data)
+                model_features = model_GCN(model_data)
+
+                f_dataset = dataset_features[dataset_node_to_index[dataset_name]]
+                f_model = model_features[model_node_to_index[model_name]]
+
+                combined_features = torch.cat([f_dataset, f_model], dim=0)
+
+                target = torch.tensor([acc[dataset_name][model_name]], dtype=torch.float)
+                output = regression_model(combined_features)
+
+                real_target = scaler.inverse_transform(np.array(target).reshape(1, 1))
+                real_output = scaler.inverse_transform(np.array(output).reshape(1, 1))
+
+                loss = criterion(output, target)
+                test_loss += loss.item()
+
+        print(f'Average test loss: {test_loss / len(test_tuples)}')

@@ -129,16 +129,18 @@ if __name__ == '__main__':
     type_to_index = {type: idx for idx, type in enumerate(unique_types)}
 
     score_dict = {}
+    accuracies = extract_accuracies('result/best_accuracies.csv')
     for node in G.nodes():
         if not G.nodes[node]['type'] == 'label':
-            acc = extract_accuracies(node, 'cifar10_results')
+            # acc = extract_dataset_accuracies(node, 'cifar10_results')
+            acc = accuracies[node]
             vec = accuracies_to_regression_vector(acc)
             # vec = accuracies_to_classification_vector(acc, num_classes=6)
             score_dict[node] = vec
 
-    data = from_networkx_to_torch_geometric(G, node_to_index, type_to_index, score_dict, num_classes=6)
+    data = from_networkx_to_torch_geometric(G, node_to_index, type_to_index, score_dict, num_classes=8)
 
-    model = GCN(num_features=data.num_node_features, num_classes=6)
+    model = GCN(num_features=data.num_node_features, num_classes=8)
     optimizer = Adam(model.parameters(), lr=1e-3)
     scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True)
 

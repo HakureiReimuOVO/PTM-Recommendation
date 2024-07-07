@@ -1,3 +1,4 @@
+import csv
 import os
 
 import numpy as np
@@ -14,7 +15,7 @@ def format_dataset_name(dataset_name):
     return formatted_name
 
 
-def extract_accuracies(dataset_name, csv_folder):
+def extract_dataset_accuracies(dataset_name, csv_folder):
     formatted_name = format_dataset_name(dataset_name)
     extracted_data = {}
     for file in os.listdir(csv_folder):
@@ -27,6 +28,20 @@ def extract_accuracies(dataset_name, csv_folder):
                 accuracy = extracted_rows['Accuracy_avg'].values[0]
                 extracted_data[model_name] = accuracy
     return extracted_data
+
+
+def extract_accuracies(csv_path):
+    data_dict = {}
+    with open(csv_path, newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            dataset = row['Dataset']
+            model = row['Model']
+            accuracy = float(row['Best Accuracy'])
+            if dataset not in data_dict:
+                data_dict[dataset] = {}
+            data_dict[dataset][model] = accuracy
+    return data_dict
 
 
 def accuracies_to_regression_vector(accuracies):
@@ -43,8 +58,9 @@ def accuracies_to_classification_vector(accuracies):
 
 
 if __name__ == '__main__':
-    for dataset_config in dataset_configs:
-        items = get_all_datasets_and_idx(dataset_name=dataset_config['name'])
-        for _, _, dataset_name in items:
-            accuracies = extract_accuracies(dataset_name, 'cifar10_results')
-            print(accuracies_to_classification_vector(accuracies, num_classes=6))
+    tmp = extract_accuracies('result/best_accuracies.csv')
+    # for dataset_config in dataset_configs:
+    #     items = get_all_datasets_and_idx(dataset_name=dataset_config['name'])
+    #     for _, _, dataset_name in items:
+    #         accuracies = extract_dataset_accuracies(dataset_name, 'cifar10_results')
+    #         print(accuracies_to_classification_vector(accuracies, num_classes=6))
