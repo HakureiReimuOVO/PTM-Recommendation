@@ -52,7 +52,7 @@ def get_data_loader(dataset_name,
     label_encoder.fit(labels)
 
     if test:
-        dataset = dataset.select(list(range(1000)))
+        dataset = dataset.select(list(range(100)))
     if print_info:
         print('Dataset preview:')
         print(dataset)

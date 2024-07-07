@@ -7,7 +7,7 @@ from torch_geometric.nn import GCNConv
 from torch.nn import Linear, MSELoss, CrossEntropyLoss
 from torch_geometric.data import Data
 from config import model_configs
-from dataset_graph import load_graph, GRAPH_OUTPUT_PATH
+from dataset_graph import load_graph, DATASET_GRAPH_OUTPUT_PATH
 from acc_loader import *
 
 
@@ -122,7 +122,7 @@ def split_data(G, test_ratio=0.2, seed=40):
 if __name__ == '__main__':
     # model_to_index = {model: idx for idx, model in enumerate(model_configs)}
 
-    G = load_graph(GRAPH_OUTPUT_PATH)
+    G = load_graph(DATASET_GRAPH_OUTPUT_PATH)
 
     node_to_index = {node: idx for idx, node in enumerate(G.nodes())}
     unique_types = set(G.nodes[node]['type'] for node in G.nodes())

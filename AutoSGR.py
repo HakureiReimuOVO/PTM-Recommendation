@@ -1,6 +1,6 @@
 import numpy as np
 
-from dataset_graph import GRAPH_OUTPUT_PATH, load_graph
+from dataset_graph import DATASET_GRAPH_OUTPUT_PATH, load_graph
 from config import dataset_configs
 from slice_dataset import get_all_datasets_and_idx
 
@@ -10,8 +10,8 @@ META_FEATURE_PATH = 'meta_features/AutoSGR'
 def get_dataset_feature_vector(graph, dataset_name):
     if dataset_name in graph.nodes:
         node = graph.nodes[dataset_name]
-        if 'features' in node:
-            return node['features']
+        if 'feature' in node:
+            return node['feature']
         else:
             print(f"Node '{dataset_name}' does not have 'features' attribute.")
             return None
@@ -21,7 +21,7 @@ def get_dataset_feature_vector(graph, dataset_name):
 
 
 if __name__ == '__main__':
-    G = load_graph(GRAPH_OUTPUT_PATH)
+    G = load_graph(DATASET_GRAPH_OUTPUT_PATH)
     for dataset_config in dataset_configs:
         items = get_all_datasets_and_idx(dataset_name=dataset_config['name'])
 

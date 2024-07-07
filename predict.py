@@ -9,7 +9,7 @@ from torch_geometric.nn import GCNConv
 from torch.nn import Linear, MSELoss
 from torch_geometric.data import Data
 from config import model_configs
-from dataset_graph import load_graph, GRAPH_OUTPUT_PATH
+from dataset_graph import load_graph, DATASET_GRAPH_OUTPUT_PATH
 
 
 def load_model_scores(directory):
@@ -169,7 +169,7 @@ def split_data(G, test_ratio=0.2):
 if __name__ == '__main__':
     model_to_index = {model: idx for idx, model in enumerate(model_configs)}
 
-    G = load_graph(GRAPH_OUTPUT_PATH)
+    G = load_graph(DATASET_GRAPH_OUTPUT_PATH)
     node_to_index = {node: idx for idx, node in enumerate(G.nodes())}
     score_dict = load_and_transform_scores('result', node_to_index, model_to_index)
     unique_types = set(G.nodes[node]['type'] for node in G.nodes())

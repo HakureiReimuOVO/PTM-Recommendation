@@ -33,11 +33,11 @@ def accuracies_to_regression_vector(accuracies):
     return np.array(list(accuracies.values()))
 
 
-def accuracies_to_classification_vector(accuracies, num_classes):
+def accuracies_to_classification_vector(accuracies):
     acc_list = list(accuracies.values())
     max_acc = max(acc_list)
     idx = acc_list.index(max_acc)
-    one_hot = np.zeros(num_classes)
+    one_hot = np.zeros(len(list(accuracies.values())))
     one_hot[idx] = 1
     return one_hot
 

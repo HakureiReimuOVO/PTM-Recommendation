@@ -12,10 +12,9 @@ from torchvision import models, transforms
 from feature_extraction import get_dataset_features
 from slice_dataset import get_all_datasets_and_idx
 
-
 FEATURE_OUTPUT_PATH = 'result/label_features.npy'
 RATIO_OUTPUT_PATH = 'result/label_ratio.json'
-GRAPH_OUTPUT_PATH = 'result/dataset_graph.pkl'
+DATASET_GRAPH_OUTPUT_PATH = 'result/dataset_graph.pkl'
 
 
 def get_dataset_feature(dataset_name, features):
@@ -122,7 +121,10 @@ def create_graph(label_features, dataset_ratios):
                 G.add_edge(dataset_name, label, weight=weight)
 
         if total_weight > 0:
-            G.nodes[dataset_name]['feature'] = total_feature / total_weight
+            # Add norm
+            feature = total_feature / total_weight
+            norm = np.linalg.norm(feature, axis=-1, keepdims=True)
+            G.nodes[dataset_name]['feature'] = feature / norm
         else:
             G.nodes[dataset_name]['feature'] = np.zeros(len(total_feature))
 
@@ -171,8 +173,7 @@ if __name__ == '__main__':
     print(label_features)
     print(dataset_ratios)
     G = create_graph(label_features, dataset_ratios)
-    save_graph(G, GRAPH_OUTPUT_PATH)
-
+    save_graph(G, DATASET_GRAPH_OUTPUT_PATH)
 
     # G = load_graph(GRAPH_OUTPUT_PATH)
     # print(G)

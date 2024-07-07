@@ -118,7 +118,7 @@ if __name__ == '__main__':
                         best_accuracy = train_model_on_data_loader(model, train_loader=train_loader,
                                                                    test_loader=test_loader,
                                                                    # Test
-                                                                   num_epochs=15,
+                                                                   num_epochs=10,
                                                                    model_name=model_config,
                                                                    dataset_name=dataset_fullname,
                                                                    log_writer=writer,
