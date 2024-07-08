@@ -57,6 +57,13 @@ def accuracies_to_classification_vector(accuracies):
     return one_hot
 
 
+def accuracies_to_idx(accuracies):
+    acc_list = list(accuracies.values())
+    max_acc = max(acc_list)
+    idx = acc_list.index(max_acc)
+    return idx
+
+
 if __name__ == '__main__':
     tmp = extract_accuracies('result/best_accuracies.csv')
     # for dataset_config in dataset_configs:

@@ -135,7 +135,7 @@ if __name__ == '__main__':
             # acc = extract_dataset_accuracies(node, 'cifar10_results')
             acc = accuracies[node]
             vec = accuracies_to_regression_vector(acc)
-            # vec = accuracies_to_classification_vector(acc, num_classes=6)
+            # vec = accuracies_to_classification_vector(acc)
             score_dict[node] = vec
 
     data = from_networkx_to_torch_geometric(G, node_to_index, type_to_index, score_dict, num_classes=8)

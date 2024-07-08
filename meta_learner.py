@@ -1,14 +1,17 @@
 import os
 import pickle
 
+import numpy as np
 import pandas as pd
 from sklearn.ensemble import BaggingClassifier
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.svm import SVC
 from tqdm import tqdm
 from xgboost import XGBClassifier
+from acc_loader import *
 import metric
 from config import *
 from slice_dataset import get_all_datasets_and_idx
@@ -23,50 +26,31 @@ num_classes = 10
 wd_list = []
 y_list = []
 
+datasets = []
+models = model_configs
 
-def format_dataset_name(dataset_name):
-    parts = dataset_name.split('_')
-    formatted_name = f"{parts[-2]}-{parts[-1]}"
-    return formatted_name
-
-
-def extract_accuracies(dataset_name, csv_folder):
-    formatted_name = format_dataset_name(dataset_name)
-    extracted_data = {}
-    for file in os.listdir(csv_folder):
-        if file.endswith('.csv'):
-            file_path = os.path.join(csv_folder, file)
-            df = pd.read_csv(file_path)
-            extracted_rows = df[df['Task'] == formatted_name]
-            if not extracted_rows.empty:
-                model_name = extracted_rows['Architecture'].values[0]
-                accuracy = extracted_rows['Accuracy_avg'].values[0]
-                extracted_data[model_name] = accuracy
-    return extracted_data
-
-
+accuracies = extract_accuracies('result/best_accuracies.csv')
 for dataset_config in dataset_configs:
     items = get_all_datasets_and_idx(dataset_name=dataset_config['name'])
     for _, _, dataset_name in items:
+        datasets.append(dataset_name)
         # AutoSGR
-        # meta_feature = get_sgr_features(dataset_name)
+        meta_feature = get_sgr_features(dataset_name)
         # AutoMRM
-        meta_feature = get_mrm_features(dataset_name)
+        # meta_feature = get_mrm_features(dataset_name)
 
-        accuracies = extract_accuracies(dataset_name, 'cifar10_results')
-        acc_list = list(accuracies.values())
-        max_acc = max(acc_list)
-
+        acc = accuracies[dataset_name]
+        vec = accuracies_to_idx(acc)
 
         wd_list.append(meta_feature)
-        y_list.append(acc_list.index(max_acc))
+        y_list.append(vec)
 
 label_encoder = LabelEncoder()
 y_list = label_encoder.fit_transform(y_list)
+unique_y = label_encoder.classes_
 
 wd_list = np.array(wd_list)
 y_list = np.array(y_list)
-
 
 # y_list = np.random.randint(0, num_classes, size=wd_list.shape[0])
 # label_encoder = LabelEncoder()
@@ -100,9 +84,12 @@ mrr_t = []
 map_t = []
 
 # Select the meta learner to use Ensemble learning or not according to the task
-model = BaggingClassifier(base_estimator=SVC(probability=True), max_samples=0.8, max_features=0.8, n_estimators=100,
-                          bootstrap_features=True, n_jobs=-1)
+model = RandomForestClassifier()
+# model = BaggingClassifier(base_estimator=SVC(probability=True), max_samples=0.8, max_features=0.8, n_estimators=100,
+#                           bootstrap_features=True, n_jobs=-1)
 pipe_lr = make_pipeline(StandardScaler(), model)
+
+res = []
 
 for i in range(100):
     indices = np.arange(y_list.shape[0])
@@ -118,48 +105,66 @@ for i in range(100):
     pipe_lr.fit(X_train, y_train)
     prediction_pro = pipe_lr.predict_proba(X_test)
 
-
-    print(1)
     # res = df.iloc[indices_test]
     # res = res.reset_index(drop=True)
 
     ndcg5 = []
     mrr = []
     map = []
+    rmv_list = []
     for x in range(len(prediction_pro)):
         model_list = []
+        m = max(prediction_pro[x])
+        a = list(prediction_pro[x]).index(m)
+        idx = unique_y[a]
+        model = models[idx]
+        dataset = datasets[x]
+        acc = accuracies[dataset][model]
+        max_acc = max(accuracies[dataset].values())
+        rmv_list.append(acc / max_acc)
+
+        arr = np.array(prediction_pro)
+        print(np.argmax(arr, axis=1))
+
         for y in range(len(prediction_pro[0])):
             model_name = y
             mSDS_acc = prediction_pro[x][y]
-            # mReal_acc = res[y][x]
+            #   mReal_acc = res[y][x]
             mReal_acc = 1
 
             model = Model(name=model_name, SDS_acc=mSDS_acc, real_acc=mReal_acc)
             model_list.append(model)
-        ndcg5.append(metric.NDCG(model_list, 5, 1)[0])
-        mrr.append(metric.MRR(model_list, 1)[0])
-        map.append(metric.MAP(model_list, 3, 1)[0])
+        # ndcg5.append(metric.NDCG(model_list, 5, 1)[0])
+        # mrr.append(metric.MRR(model_list, 1)[0])
+        # map.append(metric.MAP(model_list, 3, 1)[0])
     tmp = pipe_lr.score(X_test, y_test)
     acc_sum += tmp
     acc_list.append(tmp)
-    ndcg5_t.append(sum(ndcg5) / len(ndcg5))
-    mrr_t.append(sum(mrr) / len(mrr))
-    map_t.append(sum(map) / len(map))
+    print(f'epoch{i}, acc: {tmp}, rmv: {sum(rmv_list) / len(rmv_list)}')
+    # ndcg5_t.append(sum(ndcg5) / len(ndcg5))
+    # mrr_t.append(sum(mrr) / len(mrr))
+    # map_t.append(sum(map) / len(map))
+
+    res.append(sum(rmv_list) / len(rmv_list))
+
 acc_avg = acc_sum / len(acc_list)
 print("acc: ", acc_avg)
-print("ndcg5: ", sum(ndcg5_t) / len(ndcg5_t))
-print("mrr: ", sum(mrr_t) / len(mrr_t))
-print("map: ", sum(map_t) / len(map_t))
+res_avg = sum(res) / len(res)
+print("final rmv: ", res_avg)
+
+# print("ndcg5: ", sum(ndcg5_t) / len(ndcg5_t))
+# print("mrr: ", sum(mrr_t) / len(mrr_t))
+# print("map: ", sum(map_t) / len(map_t))
 
 # Save experimental results
-with open('acc_list_10t.pkl', 'wb') as e1:
-    pickle.dump(acc_list, e1)
+# with open('acc_list_10t.pkl', 'wb') as e1:
+#     pickle.dump(acc_list, e1)
 
-with open('ndcg5_list_10t.pkl', 'wb') as e2:
-    pickle.dump(ndcg5_t, e2)
+# with open('ndcg5_list_10t.pkl', 'wb') as e2:
+#     pickle.dump(ndcg5_t, e2)
 
-with open('mrr_list_10t.pkl', 'wb') as e2:
-    pickle.dump(mrr_t, e2)
-
-with open('map_list_10t.pkl', 'wb') as e2:
-    pickle.dump(map_t, e2)
+# with open('mrr_list_10t.pkl', 'wb') as e2:
+#     pickle.dump(mrr_t, e2)
+#
+# with open('map_list_10t.pkl', 'wb') as e2:
+#     pickle.dump(map_t, e2)

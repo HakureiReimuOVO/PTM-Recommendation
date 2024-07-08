@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, GroupShuffleSplit
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -14,6 +14,8 @@ from config import *
 from dataset_graph import load_graph, DATASET_GRAPH_OUTPUT_PATH
 from model_graph import MODEL_GRAPH_OUTPUT_PATH
 from acc_loader import *
+
+model_save_path = 'saved_models'
 
 
 class DatasetGraphGCN(torch.nn.Module):
@@ -69,7 +71,8 @@ class RegressionModel(torch.nn.Module):
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))
-        x = torch.sigmoid(self.fc4(x))
+        # x = torch.sigmoid(self.fc4(x))
+        x = self.fc4(x)
         return x
 
 
@@ -170,7 +173,13 @@ if __name__ == '__main__':
     #             filtered_tuples.append(tuple)
     # input_tuples = filtered_tuples
 
-    train_tuples, test_tuples = train_test_split(input_tuples, test_size=0.2, random_state=42)
+    # train_tuples, test_tuples = train_test_split(input_tuples, test_size=0.2, random_state=42)
+
+    dataset_names = [t[0] for t in input_tuples]
+    gss = GroupShuffleSplit(test_size=0.2, n_splits=1, random_state=42)
+    train_idx, test_idx = next(gss.split(input_tuples, groups=dataset_names))
+    train_tuples = [input_tuples[i] for i in train_idx]
+    test_tuples = [input_tuples[i] for i in test_idx]
 
     num_epochs = 200
 
@@ -209,6 +218,13 @@ if __name__ == '__main__':
 
         print(f'Epoch {epoch + 1}/{num_epochs}, Training loss: {loss}')
 
+        if (epoch + 1) % 10 == 0:
+            torch.save(dataset_GCN.state_dict(), os.path.join(model_save_path, f"dataset_GCN_epoch_{epoch + 1}.pth"))
+            torch.save(model_GCN.state_dict(), os.path.join(model_save_path, f"model_GCN_epoch_{epoch + 1}.pth"))
+            torch.save(regression_model.state_dict(),
+                       os.path.join(model_save_path, f"regression_model_epoch_{epoch + 1}.pth"))
+            print(f'Model saved at epoch {epoch + 1}.')
+
         # Test
         dataset_GCN.eval()
         model_GCN.eval()
@@ -216,10 +232,12 @@ if __name__ == '__main__':
         test_loss = 0
 
         with torch.no_grad():
-            for dataset_name, model_name in test_tuples:
-                dataset_features = dataset_GCN(dataset_data)
-                model_features = model_GCN(model_data)
+            dataset_features = dataset_GCN(dataset_data)
+            model_features = model_GCN(model_data)
 
+            res_dict = {}
+
+            for dataset_name, model_name in test_tuples:
                 f_dataset = dataset_features[dataset_node_to_index[dataset_name]]
                 f_model = model_features[model_node_to_index[model_name]]
 
@@ -231,7 +249,31 @@ if __name__ == '__main__':
                 real_target = scaler.inverse_transform(np.array(target).reshape(1, 1))
                 real_output = scaler.inverse_transform(np.array(output).reshape(1, 1))
 
+                if dataset_name not in res_dict:
+                    res_dict[dataset_name] = {}
+
+                res_dict[dataset_name][model_name] = real_output[0][0]
+
                 loss = criterion(output, target)
                 test_loss += loss.item()
 
+        print(res_dict)
+
+        # Calculate RMV
+        rmv_list = []
+        p_list = []
+        for k, v in res_dict.items():
+            v_real = acc[k]
+            p_idx = list(v.values()).index(max(v.values()))
+
+            v_real_scaled = scaler.inverse_transform(np.array(list(v_real.values())).reshape(-1, 1)).reshape(-1)
+            p = v_real_scaled[p_idx]
+
+            rmv = p / max(v_real_scaled)
+            rmv_list.append(rmv)
+
+            p_list.append((p_idx, p))
+
+        print(p_list)
+        print(f'Average RMV: {sum(rmv_list) / len(rmv_list)}')
         print(f'Average test loss: {test_loss / len(test_tuples)}')
