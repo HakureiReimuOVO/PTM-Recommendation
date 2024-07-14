@@ -14,6 +14,8 @@ from config import *
 from dataset_graph import load_graph, DATASET_GRAPH_OUTPUT_PATH
 from model_graph import MODEL_GRAPH_OUTPUT_PATH
 from acc_loader import *
+from train_test_indice import *
+from evaluate_metrics import *
 
 model_save_path = 'saved_models'
 
@@ -152,10 +154,12 @@ if __name__ == '__main__':
     criterion = MSELoss()
 
     input_tuples = []
+    dataset_names = []
 
     for dataset_config in dataset_configs:
         items = get_all_datasets_and_idx(dataset_name=dataset_config['name'])
         for _, _, dataset_name in items:
+            dataset_names.append(dataset_name)
             for model_name in model_configs:
                 input_tuples.append((dataset_name, model_name))
 
@@ -175,11 +179,18 @@ if __name__ == '__main__':
 
     # train_tuples, test_tuples = train_test_split(input_tuples, test_size=0.2, random_state=42)
 
-    dataset_names = [t[0] for t in input_tuples]
-    gss = GroupShuffleSplit(test_size=0.2, n_splits=1, random_state=42)
-    train_idx, test_idx = next(gss.split(input_tuples, groups=dataset_names))
-    train_tuples = [input_tuples[i] for i in train_idx]
-    test_tuples = [input_tuples[i] for i in test_idx]
+    train_tuples = []
+    test_tuples = []
+    for input_tuple in input_tuples:
+        if dataset_names.index(input_tuple[0]) in train_indices:
+            train_tuples.append(input_tuple)
+        elif dataset_names.index(input_tuple[0]) in test_indices:
+            test_tuples.append(input_tuple)
+
+    # gss = GroupShuffleSplit(test_size=0.2, n_splits=1, random_state=42)
+    # train_idx, test_idx = next(gss.split(input_tuples, groups=dataset_names))
+    # train_tuples = [input_tuples[i] for i in train_idx]
+    # test_tuples = [input_tuples[i] for i in test_idx]
 
     num_epochs = 200
 
@@ -259,12 +270,17 @@ if __name__ == '__main__':
 
         print(res_dict)
 
+        # Calculate MAP
+        
+
         # Calculate RMV
         rmv_list = []
+        map_list = []
         p_list = []
         for k, v in res_dict.items():
             v_real = acc[k]
-            p_idx = list(v.values()).index(max(v.values()))
+            v_predict = list(v.values())
+            p_idx = v_predict.index(max(v.values()))
 
             v_real_scaled = scaler.inverse_transform(np.array(list(v_real.values())).reshape(-1, 1)).reshape(-1)
             p = v_real_scaled[p_idx]
@@ -272,8 +288,12 @@ if __name__ == '__main__':
             rmv = p / max(v_real_scaled)
             rmv_list.append(rmv)
 
+            map = map_k(v_predict, v_real_scaled, 3)
+            map_list.append(map)
+
             p_list.append((p_idx, p))
 
         print(p_list)
         print(f'Average RMV: {sum(rmv_list) / len(rmv_list)}')
+        print(f'MAP: {sum(map_list) / len(map_list)}')
         print(f'Average test loss: {test_loss / len(test_tuples)}')

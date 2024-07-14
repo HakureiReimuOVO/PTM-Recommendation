@@ -16,6 +16,17 @@ import metric
 from config import *
 from slice_dataset import get_all_datasets_and_idx
 from feature_loader import *
+from train_test_indice import train_indices, test_indices
+from evaluate_metrics import *
+
+
+def padding(idxs, elements, k=8):
+    assert len(idxs) == len(elements)
+    res = [0] * k
+    for i in range(len(idxs)):
+        res[idxs[i]] = elements[i]
+    return res
+
 
 num_tasks = 160
 feature_length = 512
@@ -90,18 +101,37 @@ model = RandomForestClassifier()
 pipe_lr = make_pipeline(StandardScaler(), model)
 
 res = []
+res_map = []
+X_train_list = []
+X_test_list = []
+y_train_list = []
+y_test_list = []
+
+for j in train_indices:
+    X_train_list.append(wd_list[j])
+    y_train_list.append(y_list[j])
+
+for k in test_indices:
+    X_test_list.append(wd_list[k])
+    y_test_list.append(y_list[k])
+
+X_train = np.array(X_train_list)
+X_test = np.array(X_test_list)
+y_train = np.array(y_train_list)
+y_test = np.array(y_test_list)
 
 for i in range(100):
-    indices = np.arange(y_list.shape[0])
-    [indices_train, indices_test, y_train, y_test] = train_test_split(indices, y_list, test_size=0.20, stratify=y_list)
-    X_train_list = []
-    X_test_list = []
-    for j in indices_train:
-        X_train_list.append(wd_list[j])
-    X_train = np.array(X_train_list)
-    for k in indices_test:
-        X_test_list.append(wd_list[k])
-    X_test = np.array(X_test_list)
+    # indices = np.arange(y_list.shape[0])
+    # [indices_train, indices_test, y_train, y_test] = train_test_split(indices, y_list, test_size=0.20, stratify=y_list)
+    # X_train_list = []
+    # X_test_list = []
+    # for j in indices_train:
+    #     X_train_list.append(wd_list[j])
+    # X_train = np.array(X_train_list)
+    # for k in indices_test:
+    #     X_test_list.append(wd_list[k])
+    # X_test = np.array(X_test_list)
+
     pipe_lr.fit(X_train, y_train)
     prediction_pro = pipe_lr.predict_proba(X_test)
 
@@ -112,8 +142,10 @@ for i in range(100):
     mrr = []
     map = []
     rmv_list = []
+    map_list = []
     for x in range(len(prediction_pro)):
         model_list = []
+
         m = max(prediction_pro[x])
         a = list(prediction_pro[x]).index(m)
         idx = unique_y[a]
@@ -123,34 +155,38 @@ for i in range(100):
         max_acc = max(accuracies[dataset].values())
         rmv_list.append(acc / max_acc)
 
+        p = prediction_pro[x]
+        pad = padding(unique_y, p, k=8)
+        l = list(accuracies[dataset].values())
+
+        map_list.append(map_k(p, l, 3))
+
         arr = np.array(prediction_pro)
-        print(np.argmax(arr, axis=1))
+        # print(np.argmax(arr, axis=1))
 
         for y in range(len(prediction_pro[0])):
             model_name = y
             mSDS_acc = prediction_pro[x][y]
-            #   mReal_acc = res[y][x]
             mReal_acc = 1
-
-            model = Model(name=model_name, SDS_acc=mSDS_acc, real_acc=mReal_acc)
-            model_list.append(model)
         # ndcg5.append(metric.NDCG(model_list, 5, 1)[0])
         # mrr.append(metric.MRR(model_list, 1)[0])
         # map.append(metric.MAP(model_list, 3, 1)[0])
+
     tmp = pipe_lr.score(X_test, y_test)
     acc_sum += tmp
     acc_list.append(tmp)
-    print(f'epoch{i}, acc: {tmp}, rmv: {sum(rmv_list) / len(rmv_list)}')
+    print(f'epoch{i}, acc: {tmp}, rmv: {sum(rmv_list) / len(rmv_list)}, map: {sum(map_list) / len(map_list)} ')
     # ndcg5_t.append(sum(ndcg5) / len(ndcg5))
     # mrr_t.append(sum(mrr) / len(mrr))
     # map_t.append(sum(map) / len(map))
 
     res.append(sum(rmv_list) / len(rmv_list))
+    res_map.append(sum(map_list) / len(map_list))
 
 acc_avg = acc_sum / len(acc_list)
 print("acc: ", acc_avg)
-res_avg = sum(res) / len(res)
-print("final rmv: ", res_avg)
+print("final rmv: ", sum(res) / len(res))
+print("final map: ", sum(res_map) / len(res_map))
 
 # print("ndcg5: ", sum(ndcg5_t) / len(ndcg5_t))
 # print("mrr: ", sum(mrr_t) / len(mrr_t))
