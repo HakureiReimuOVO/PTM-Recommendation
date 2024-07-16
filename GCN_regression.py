@@ -271,11 +271,15 @@ if __name__ == '__main__':
         print(res_dict)
 
         # Calculate MAP
-        
 
         # Calculate RMV
-        rmv_list = []
-        map_list = []
+        rmv_cnt = 0
+        precision_cnt = 0
+        recall_cnt = 0
+        mrr_cnt = 0
+        map_cnt = 0
+        ndcg_cnt = 0
+        cnt = 0
         p_list = []
         for k, v in res_dict.items():
             v_real = acc[k]
@@ -285,15 +289,25 @@ if __name__ == '__main__':
             v_real_scaled = scaler.inverse_transform(np.array(list(v_real.values())).reshape(-1, 1)).reshape(-1)
             p = v_real_scaled[p_idx]
 
-            rmv = p / max(v_real_scaled)
-            rmv_list.append(rmv)
+            map = map_at_k(v_predict, v_real_scaled, 3)
 
-            map = map_k(v_predict, v_real_scaled, 3)
-            map_list.append(map)
-
+            rmv_cnt += rmv(v_predict, v_real_scaled)
+            precision_cnt += precision_at_k(v_predict, v_real_scaled, 3)
+            recall_cnt += recall_at_k(v_predict, v_real_scaled, 3)
+            mrr_cnt += mrr_at_k(v_predict, v_real_scaled, 3)
+            map_cnt += map_at_k(v_predict, v_real_scaled, 3)
+            ndcg_cnt += ndcg_at_k(v_predict, v_real_scaled, 3)
+            cnt += 1
             p_list.append((p_idx, p))
 
         print(p_list)
-        print(f'Average RMV: {sum(rmv_list) / len(rmv_list)}')
-        print(f'MAP: {sum(map_list) / len(map_list)}')
+        # print(f'Average RMV: {sum(rmv_list) / len(rmv_list)}')
+        # print(f'MAP: {sum(map_list) / len(map_list)}')
         print(f'Average test loss: {test_loss / len(test_tuples)}')
+        print(f'RMV: {rmv_cnt / cnt}')
+        print(f'Precision: {precision_cnt / cnt}')
+        print(f'Recall: {recall_cnt / cnt}')
+        print(f'MRR: {mrr_cnt / cnt}')
+        print(f'MAP: {map_cnt / cnt}')
+        print(f'NDCG: {ndcg_cnt / cnt}')
+        print('=====================')

@@ -138,11 +138,13 @@ for i in range(100):
     # res = df.iloc[indices_test]
     # res = res.reset_index(drop=True)
 
-    ndcg5 = []
-    mrr = []
-    map = []
-    rmv_list = []
-    map_list = []
+    rmv_cnt = 0
+    precision_cnt = 0
+    recall_cnt = 0
+    mrr_cnt = 0
+    map_cnt = 0
+    ndcg_cnt = 0
+
     for x in range(len(prediction_pro)):
         model_list = []
 
@@ -151,17 +153,24 @@ for i in range(100):
         idx = unique_y[a]
         model = models[idx]
         dataset = datasets[x]
-        acc = accuracies[dataset][model]
-        max_acc = max(accuracies[dataset].values())
-        rmv_list.append(acc / max_acc)
+        # acc = accuracies[dataset][model]
+        # max_acc = max(accuracies[dataset].values())
+        # rmv_list.append(acc / max_acc)
 
         p = prediction_pro[x]
-        pad = padding(unique_y, p, k=8)
+        pad_p = padding(unique_y, p, k=8)
         l = list(accuracies[dataset].values())
 
-        map_list.append(map_k(p, l, 3))
+        # map_list.append(map_k(pad_p, l, 3))
 
-        arr = np.array(prediction_pro)
+        rmv_cnt += rmv(pad_p, l)
+        precision_cnt += precision_at_k(pad_p, l, 3)
+        recall_cnt += recall_at_k(pad_p, l, 3)
+        mrr_cnt += mrr_at_k(pad_p, l, 3)
+        map_cnt += map_at_k(pad_p, l, 3)
+        ndcg_cnt += ndcg_at_k(pad_p, l, 3)
+
+        # arr = np.array(prediction_pro)
         # print(np.argmax(arr, axis=1))
 
         for y in range(len(prediction_pro[0])):
@@ -172,21 +181,29 @@ for i in range(100):
         # mrr.append(metric.MRR(model_list, 1)[0])
         # map.append(metric.MAP(model_list, 3, 1)[0])
 
+    rmv_cnt = rmv_cnt / len(prediction_pro)
+    precision_cnt = precision_cnt / len(prediction_pro)
+    recall_cnt = recall_cnt / len(prediction_pro)
+    mrr_cnt = mrr_cnt / len(prediction_pro)
+    map_cnt = map_cnt / len(prediction_pro)
+    ndcg_cnt = ndcg_cnt / len(prediction_pro)
     tmp = pipe_lr.score(X_test, y_test)
     acc_sum += tmp
     acc_list.append(tmp)
-    print(f'epoch{i}, acc: {tmp}, rmv: {sum(rmv_list) / len(rmv_list)}, map: {sum(map_list) / len(map_list)} ')
+    print(f'epoch{i}, acc: {tmp}')
+    print(f'rmv: {rmv_cnt}')
+    print(f'precision: {precision_cnt}')
+    print(f'recall: {recall_cnt}')
+    print(f'mrr: {mrr_cnt}')
+    print(f'map: {map_cnt}')
+    print(f'ndcg: {ndcg_cnt}')
+    print('=================')
     # ndcg5_t.append(sum(ndcg5) / len(ndcg5))
     # mrr_t.append(sum(mrr) / len(mrr))
     # map_t.append(sum(map) / len(map))
 
-    res.append(sum(rmv_list) / len(rmv_list))
-    res_map.append(sum(map_list) / len(map_list))
-
 acc_avg = acc_sum / len(acc_list)
 print("acc: ", acc_avg)
-print("final rmv: ", sum(res) / len(res))
-print("final map: ", sum(res_map) / len(res_map))
 
 # print("ndcg5: ", sum(ndcg5_t) / len(ndcg5_t))
 # print("mrr: ", sum(mrr_t) / len(mrr_t))
