@@ -13,6 +13,26 @@ if test:
         'google/efficientnet-b0',  # model.classifier
         'microsoft/beit-base-patch16-224',  # model.classifier
     ]
+    dataset_configs = [
+        {
+            'name': 'cifar10',
+            'image_key': 'img',
+            'label_key': 'label',
+            'comb': [2]
+        },
+        # {
+        #     'name': 'cifar10',
+        #     'image_key': 'img',
+        #     'label_key': 'label',
+        #     'comb': 5,
+        # },
+        # {
+        #     'name': 'cifar100',
+        #     'image_key': 'img',
+        #     'label_key': 'fine_label',
+        #     'num_rows': 50000
+        # },
+    ]
 
     # model_configs = [
     #     'microsoft/resnet-18',  # model.classifier[-1]
@@ -55,20 +75,20 @@ if test:
     #                  'nvidia/mit-b2'  # model.classifier
     #                  ]
 
-    dataset_configs = [
-        {
-            'name': 'cifar10',
-            'image_key': 'img',
-            'label_key': 'label',
-            'num_rows': 50000
-        },
-        # {
-        #     'name': 'cifar100',
-        #     'image_key': 'img',
-        #     'label_key': 'fine_label',
-        #     'num_rows': 50000
-        # },
-    ]
+    # dataset_configs = [
+    #     {
+    #         'name': 'cifar10',
+    #         'image_key': 'img',
+    #         'label_key': 'label',
+    #         'num_rows': 50000
+    #     },
+    #     # {
+    #     #     'name': 'cifar100',
+    #     #     'image_key': 'img',
+    #     #     'label_key': 'fine_label',
+    #     #     'num_rows': 50000
+    #     # },
+    # ]
     chunk_size = 10
 else:
     root_path = 'preprocessed_datasets'

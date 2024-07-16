@@ -138,46 +138,46 @@ def show_graph(G):
 
 
 if __name__ == '__main__':
-    # G = load_graph(MODEL_GRAPH_OUTPUT_PATH)
-    # show_graph(G)
+    G = load_graph(MODEL_GRAPH_OUTPUT_PATH)
+    show_graph(G)
 
-    transform = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
-
-    input_size = (3, 224, 224)
-
-    dataset = TinyImageNetDataset(root_dir=TINY_IMAGENET_PATH, transform=transform)
-
-
-    # Test
-    dataset = torch.utils.data.Subset(dataset, range(32))
-    data_loader = DataLoader(dataset, batch_size=32, shuffle=False)
-    model_features = []
-
-    # Test
-    # model_configs = model_configs[:2]
-
-    for model_config in model_configs:
-        model = get_model(model_config)
-        feature = extract_features(model_config, model, data_loader)
-        pooled_feature = average_pool_to_fixed_length(feature, target_length=512)
-        norm = np.linalg.norm(pooled_feature, axis=-1, keepdims=True)
-        norm_feature = pooled_feature / norm
-
-        model_features.append(norm_feature.cpu().numpy())
-
-        # params, trainable_params = get_model_params(model)
-        # flops, _ = get_model_complexity_info(model, input_size, as_strings=False, print_per_layer_stat=False)
-        # print(f'Total params: {params}, Flops: {flops}')
-
-    model_features = np.array(model_features)
-
-    similarity_matrix = cosine_similarity(model_features)
-
-    G = create_graph(model_names=model_configs, model_features=model_features, model_similarities=similarity_matrix)
-
-    save_graph(G, MODEL_GRAPH_OUTPUT_PATH)
-    print(G)
+    # transform = transforms.Compose([
+    #     transforms.Resize((224, 224)),
+    #     transforms.ToTensor(),
+    #     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    # ])
+    #
+    # input_size = (3, 224, 224)
+    #
+    # dataset = TinyImageNetDataset(root_dir=TINY_IMAGENET_PATH, transform=transform)
+    #
+    #
+    # # Test
+    # dataset = torch.utils.data.Subset(dataset, range(32))
+    # data_loader = DataLoader(dataset, batch_size=32, shuffle=False)
+    # model_features = []
+    #
+    # # Test
+    # # model_configs = model_configs[:2]
+    #
+    # for model_config in model_configs:
+    #     model = get_model(model_config)
+    #     feature = extract_features(model_config, model, data_loader)
+    #     pooled_feature = average_pool_to_fixed_length(feature, target_length=512)
+    #     norm = np.linalg.norm(pooled_feature, axis=-1, keepdims=True)
+    #     norm_feature = pooled_feature / norm
+    #
+    #     model_features.append(norm_feature.cpu().numpy())
+    #
+    #     # params, trainable_params = get_model_params(model)
+    #     # flops, _ = get_model_complexity_info(model, input_size, as_strings=False, print_per_layer_stat=False)
+    #     # print(f'Total params: {params}, Flops: {flops}')
+    #
+    # model_features = np.array(model_features)
+    #
+    # similarity_matrix = cosine_similarity(model_features)
+    #
+    # G = create_graph(model_names=model_configs, model_features=model_features, model_similarities=similarity_matrix)
+    #
+    # save_graph(G, MODEL_GRAPH_OUTPUT_PATH)
+    # print(G)
