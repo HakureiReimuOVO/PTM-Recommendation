@@ -14,6 +14,8 @@ from acc_loader import *
 from evaluate_metrics import *
 from train_test_indice import train_indices, test_indices
 
+model_save_path = 'saved_models'
+
 
 def generate_combs(n):
     indices = list(range(n))
@@ -22,6 +24,7 @@ def generate_combs(n):
 
 
 combs = generate_combs(len(model_configs))
+
 
 class GCN(torch.nn.Module):
     def __init__(self, num_features, num_classes):
@@ -57,6 +60,7 @@ class GCN(torch.nn.Module):
 
         x = self.out(x)
         return x
+
 
 # class GCN(torch.nn.Module):
 #     def __init__(self, num_features, num_classes):
@@ -265,3 +269,6 @@ if __name__ == '__main__':
         print(f'Epoch {epoch + 1}: Loss {loss:.4f}')
         # print(f'Epoch {epoch + 1}: Loss {loss:.4f}, Test Accuracy: {accuracy * 100:.2f}%, RMV: {rmv * 100}%')
         scheduler.step(loss)
+        if (epoch + 1) % 10 == 0:
+            torch.save(model.state_dict(), os.path.join(model_save_path, f"classification_GCN_epoch_{epoch + 1}.pth"))
+            print(f'Model saved at epoch {epoch + 1}.')

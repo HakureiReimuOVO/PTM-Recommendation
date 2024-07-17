@@ -20,6 +20,8 @@ from train_test_indice import train_indices, test_indices
 from evaluate_metrics import *
 import itertools
 
+model_save_path = 'saved_models'
+
 
 def generate_combs(n):
     indices = list(range(n))
@@ -230,6 +232,10 @@ for i in range(100):
     # ndcg5_t.append(sum(ndcg5) / len(ndcg5))
     # mrr_t.append(sum(mrr) / len(mrr))
     # map_t.append(sum(map) / len(map))
+    if (i + 1) % 10 == 0:
+        with open(os.path.join(model_save_path, f"meta_learner_epoch_{i + 1}.pkl"), 'wb') as model_file:
+            pickle.dump(pipe_lr, model_file)
+        print(f'Model saved at epoch {i + 1}.')
 
 acc_avg = acc_sum / len(acc_list)
 print("acc: ", acc_avg)
