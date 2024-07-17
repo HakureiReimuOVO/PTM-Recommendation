@@ -4,6 +4,7 @@ import torch
 import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import MinMaxScaler
 from tqdm import tqdm
 from datasets import load_from_disk
 from config import *
@@ -14,6 +15,7 @@ from slice_dataset import get_all_datasets_and_idx
 
 FEATURE_OUTPUT_PATH = 'result/label_features.npy'
 RATIO_OUTPUT_PATH = 'result/label_ratio.json'
+NUMERIC_FEATURE_OUTPUT_PATH = 'result/dataset_numeric_features.json'
 DATASET_GRAPH_OUTPUT_PATH = 'result/dataset_graph.pkl'
 
 
@@ -88,23 +90,71 @@ def get_label_ratios():
     return dataset_ratios
 
 
-def load_data(feature_path, ratio_path):
+def get_numeric_features():
+    numeric_features = {}
+    for dataset_config in dataset_configs:
+        dataset_name = dataset_config['name']
+        image_key = dataset_config['image_key']
+        label_key = dataset_config['label_key']
+
+        items = get_all_datasets_and_idx(dataset_name=dataset_name)
+        for dataset, _, dataset_fullname in tqdm(items):
+            num_images = len(dataset)
+            image_sizes = [item[image_key].size for item in dataset]
+            avg_image_size = (
+                    sum(size[0] * size[1] for size in image_sizes) // len(image_sizes)
+            ) if image_sizes else 0
+            num_classes = len(set(item[label_key] for item in dataset))
+
+            # num_images = dataset_fullname.count('_') * 5000
+            # avg_image_size = 1024
+            # num_classes = dataset_fullname.count('_')
+
+            numeric_features[dataset_fullname] = {
+                'num_images': num_images,
+                'image_size': avg_image_size,
+                'num_classes': num_classes
+            }
+
+    with open(NUMERIC_FEATURE_OUTPUT_PATH, 'w') as f:
+        json.dump(numeric_features, f)
+    return numeric_features
+
+
+def load_data(feature_path, ratio_path, numeric_feature_path):
     label_features = np.load(feature_path, allow_pickle=True).item()
 
     with open(ratio_path, 'r') as f:
         dataset_ratios = json.load(f)
 
+    with open(numeric_feature_path, 'r') as f:
+        numeric_features = json.load(f)
+
     # with open(feature_path, 'r') as f:
     #     label_features = json.load(f)
 
-    return label_features, dataset_ratios
+    return label_features, dataset_ratios, numeric_features
 
 
-def create_graph(label_features, dataset_ratios):
+def create_graph(label_features, dataset_ratios, numeric_features):
     G = nx.DiGraph()
 
+    numeric_features_dim = 256
+    num_feats = np.array(
+        [[data["num_images"], data["image_size"], data["num_classes"]] for data in numeric_features.values()])
+    scaler = MinMaxScaler()
+    normalized_features = scaler.fit_transform(num_feats)
+    expanded_features = np.repeat(normalized_features, numeric_features_dim, axis=1)
+    num_feat_dict = {name: expanded_features[i] for i, name in enumerate(numeric_features.keys())}
+
     for label, features in label_features.items():
-        G.add_node(label, type='label', feature=np.array(features))
+        # label_feat = np.array(features)
+        # norm = np.linalg.norm(label_feat, axis=-1, keepdims=True)
+        # G.add_node(label, type='label', feature=label_feat / norm)
+
+        label_feat = np.concatenate((np.array(features), np.zeros(3 * numeric_features_dim)))
+        norm = np.linalg.norm(label_feat, axis=-1, keepdims=True)
+        G.add_node(label, type='label', feature=label_feat / norm)
 
     for dataset_name, labels_info in dataset_ratios.items():
         G.add_node(dataset_name, type='dataset')
@@ -123,10 +173,12 @@ def create_graph(label_features, dataset_ratios):
         if total_weight > 0:
             # Add norm
             feature = total_feature / total_weight
-            norm = np.linalg.norm(feature, axis=-1, keepdims=True)
-            G.nodes[dataset_name]['feature'] = feature / norm
+            num_feat = num_feat_dict[dataset_name]
+            cat_feat = np.concatenate((feature, num_feat))
+            norm = np.linalg.norm(cat_feat, axis=-1, keepdims=True)
+            G.nodes[dataset_name]['feature'] = cat_feat / norm
         else:
-            G.nodes[dataset_name]['feature'] = np.zeros(len(total_feature))
+            G.nodes[dataset_name]['feature'] = np.zeros(len(total_feature) + 3 * numeric_features_dim)
 
     return G
 
@@ -168,13 +220,15 @@ if __name__ == '__main__':
 
     # get_label_features()
     # get_label_ratios()
+    # get_numeric_features()
 
-    label_features, dataset_ratios = load_data(FEATURE_OUTPUT_PATH, RATIO_OUTPUT_PATH)
-    print(label_features)
-    print(dataset_ratios)
-    G = create_graph(label_features, dataset_ratios)
-    save_graph(G, DATASET_GRAPH_OUTPUT_PATH)
+    # label_features, dataset_ratios, numeric_features = load_data(FEATURE_OUTPUT_PATH, RATIO_OUTPUT_PATH, NUMERIC_FEATURE_OUTPUT_PATH)
+    # print(label_features)
+    # print(dataset_ratios)
+    # print(numeric_features)
+    # G = create_graph(label_features, dataset_ratios, numeric_features)
+    # save_graph(G, DATASET_GRAPH_OUTPUT_PATH)
 
-    # G = load_graph(DATASET_GRAPH_OUTPUT_PATH)
-    # print(G)
+    G = load_graph(DATASET_GRAPH_OUTPUT_PATH)
+    print(G)
     # draw_graph(G)
