@@ -1,3 +1,5 @@
+import itertools
+
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -9,7 +11,17 @@ from torch_geometric.data import Data
 from config import model_configs
 from dataset_graph import load_graph, DATASET_GRAPH_OUTPUT_PATH
 from acc_loader import *
+from evaluate_metrics import *
+from train_test_indice import train_indices, test_indices
 
+
+def generate_combs(n):
+    indices = list(range(n))
+    combinations = list(itertools.combinations(indices, 2))
+    return combinations
+
+
+combs = generate_combs(len(model_configs))
 
 class GCN(torch.nn.Module):
     def __init__(self, num_features, num_classes):
@@ -20,19 +32,54 @@ class GCN(torch.nn.Module):
         self.conv4 = GCNConv(4096, 2048)
         self.out = Linear(2048, num_classes)
 
+        self.res1 = Linear(num_features, 1024)
+        self.res2 = Linear(1024, 2048)
+        self.res3 = Linear(2048, 4096)
+        self.res4 = Linear(4096, 2048)
+
     def forward(self, data):
         x, edge_index, edge_weight = data.x, data.edge_index, data.edge_attr
 
-        x = F.relu(self.conv1(x, edge_index, edge_weight=edge_weight))
+        res_x = self.res1(x)
+        x = F.relu(self.conv1(x, edge_index, edge_weight=edge_weight) + res_x)
         x = F.dropout(x, training=self.training)
-        x = F.relu(self.conv2(x, edge_index, edge_weight=edge_weight))
+
+        res_x = self.res2(x)
+        x = F.relu(self.conv2(x, edge_index, edge_weight=edge_weight) + res_x)
         x = F.dropout(x, training=self.training)
-        x = F.relu(self.conv3(x, edge_index, edge_weight=edge_weight))
+
+        res_x = self.res3(x)
+        x = F.relu(self.conv3(x, edge_index, edge_weight=edge_weight) + res_x)
         x = F.dropout(x, training=self.training)
-        x = F.relu(self.conv4(x, edge_index, edge_weight=edge_weight))
+
+        res_x = self.res4(x)
+        x = F.relu(self.conv4(x, edge_index, edge_weight=edge_weight) + res_x)
 
         x = self.out(x)
         return x
+
+# class GCN(torch.nn.Module):
+#     def __init__(self, num_features, num_classes):
+#         super(GCN, self).__init__()
+#         self.conv1 = GCNConv(num_features, 1024)
+#         self.conv2 = GCNConv(1024, 2048)
+#         self.conv3 = GCNConv(2048, 4096)
+#         self.conv4 = GCNConv(4096, 2048)
+#         self.out = Linear(2048, num_classes)
+#
+#     def forward(self, data):
+#         x, edge_index, edge_weight = data.x, data.edge_index, data.edge_attr
+#
+#         x = F.relu(self.conv1(x, edge_index, edge_weight=edge_weight))
+#         x = F.dropout(x, training=self.training)
+#         x = F.relu(self.conv2(x, edge_index, edge_weight=edge_weight))
+#         x = F.dropout(x, training=self.training)
+#         x = F.relu(self.conv3(x, edge_index, edge_weight=edge_weight))
+#         x = F.dropout(x, training=self.training)
+#         x = F.relu(self.conv4(x, edge_index, edge_weight=edge_weight))
+#
+#         x = self.out(x)
+#         return x
 
 
 def from_networkx_to_torch_geometric(G, node_to_index, type_to_index, score_dict, num_classes=6):
@@ -68,21 +115,67 @@ def test(model, data, test_mask):
     model.eval()
     with torch.no_grad():
         out = model(data)[test_mask]
-        predicted = out.argmax(dim=1)
-        correct = data.y[test_mask].argmax(dim=1)
-        correct_sum = (predicted == correct).sum().item()
-        total = test_mask.sum().item()
-        accuracy = correct_sum / total if total > 0 else 0
+        real = data.y[test_mask]
 
-        # Caculate RMV
-        real_acc = data.y[test_mask]
-        max_acc = torch.max(real_acc, dim=1).values
-        predicted_tmp = predicted.unsqueeze(1)
-        predicted_acc = torch.gather(real_acc, 1, predicted_tmp).squeeze(1)
-        rmv = predicted_acc / max_acc
-        avg_rmv = torch.mean(rmv)
+        rmv_cnt = 0
+        precision_cnt = 0
+        recall_cnt = 0
+        mrr_cnt = 0
+        map_cnt = 0
+        ndcg_cnt = 0
+        cnt = 0
 
-    return accuracy, avg_rmv
+        binary_acc = 0
+        binary_cnt = 0
+
+        for idx in range(out.shape[0]):
+            p = out[idx].numpy()
+            r = real[idx].numpy()
+
+            for comb in combs:
+                p_x = p[comb[0]]
+                p_y = p[comb[1]]
+                r_x = r[comb[0]]
+                r_y = r[comb[1]]
+                binary_cnt += 1
+                if r_x == r_y:
+                    binary_acc += 1
+                elif p_x >= p_y and r_x > r_y:
+                    binary_acc += 1
+                elif p_x <= p_y and r_x < r_y:
+                    binary_acc += 1
+
+            cnt += 1
+            rmv_cnt += rmv(p, r)
+            precision_cnt += precision_at_k(p, r, 3)
+            recall_cnt += recall_at_k(p, r, 3)
+            mrr_cnt += mrr_at_k(p, r, 3)
+            map_cnt += map_at_k(p, r, 3)
+            ndcg_cnt += ndcg_at_k(p, r, 3)
+
+        print(f'RMV: {rmv_cnt / cnt}')
+        print(f'Precision: {precision_cnt / cnt}')
+        print(f'Recall: {recall_cnt / cnt}')
+        print(f'MRR: {mrr_cnt / cnt}')
+        print(f'MAP: {map_cnt / cnt}')
+        print(f'NDCG: {ndcg_cnt / cnt}')
+        print(f'binary acc: {binary_acc / binary_cnt}')
+        print(f'=================================')
+
+        # out = model(data)[test_mask]
+        # predicted = out.argmax(dim=1)
+        # correct = data.y[test_mask].argmax(dim=1)
+        # correct_sum = (predicted == correct).sum().item()
+        # total = test_mask.sum().item()
+        # accuracy = correct_sum / total if total > 0 else 0
+        #
+        # # Caculate RMV
+        # real_acc = data.y[test_mask]
+        # max_acc = torch.max(real_acc, dim=1).values
+        # predicted_tmp = predicted.unsqueeze(1)
+        # predicted_acc = torch.gather(real_acc, 1, predicted_tmp).squeeze(1)
+        # rmv = predicted_acc / max_acc
+        # avg_rmv = torch.mean(rmv)
 
 
 def train(model, data, optimizer, criterion, train_mask):
@@ -150,10 +243,25 @@ if __name__ == '__main__':
     # train_mask = torch.tensor([node_data['type'] == 'dataset' for node_id, node_data in G.nodes(data=True)],
     #                           dtype=torch.bool)
 
-    train_mask, test_mask = split_data(G)
+    # train_mask, test_mask = split_data(G)
+
+    label_cnt = 0
+    for node in G.nodes():
+        if G.nodes[node]['type'] == 'label':
+            label_cnt += 1
+
+    train_mask = [False for idx in range(len(G.nodes))]
+    test_mask = [False for idx in range(len(G.nodes))]
+    for train_indice in train_indices:
+        train_mask[train_indice + label_cnt] = True
+    for test_indices in test_indices:
+        test_mask[test_indices + label_cnt] = True
+    train_mask = torch.tensor(train_mask, dtype=torch.bool)
+    test_mask = torch.tensor(test_mask, dtype=torch.bool)
 
     for epoch in range(200):
         loss = train(model, data, optimizer, criterion, train_mask)
-        accuracy, rmv = test(model, data, test_mask)
-        print(f'Epoch {epoch + 1}: Loss {loss:.4f}, Test Accuracy: {accuracy * 100:.2f}%, RMV: {rmv * 100}%')
+        test(model, data, test_mask)
+        print(f'Epoch {epoch + 1}: Loss {loss:.4f}')
+        # print(f'Epoch {epoch + 1}: Loss {loss:.4f}, Test Accuracy: {accuracy * 100:.2f}%, RMV: {rmv * 100}%')
         scheduler.step(loss)

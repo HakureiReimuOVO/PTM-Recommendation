@@ -1,3 +1,5 @@
+import itertools
+
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -18,6 +20,12 @@ from train_test_indice import *
 from evaluate_metrics import *
 
 model_save_path = 'saved_models'
+
+
+def generate_combs(n):
+    indices = list(range(n))
+    combinations = list(itertools.combinations(indices, 2))
+    return combinations
 
 
 class DatasetGraphGCN(torch.nn.Module):
@@ -62,6 +70,7 @@ class ModelGraphGCN(torch.nn.Module):
         x_res = self.res_connection2(x)
         x = self.conv2(x, edge_index, edge_weight=edge_weight) + x_res
         return x
+
 
 # class DatasetGraphGCN(torch.nn.Module):
 #     def __init__(self, num_features, output_size):
@@ -175,6 +184,8 @@ def norm_acc(data):
 
 
 if __name__ == '__main__':
+    combs = generate_combs(len(model_configs))
+
     G_dataset = load_graph(DATASET_GRAPH_OUTPUT_PATH)
     G_model = load_graph(MODEL_GRAPH_OUTPUT_PATH)
 
@@ -324,6 +335,10 @@ if __name__ == '__main__':
         ndcg_cnt = 0
         cnt = 0
         p_list = []
+
+        binary_cnt = 0
+        binary_acc = 0
+
         for k, v in res_dict.items():
             v_real = acc[k]
             v_predict = list(v.values())
@@ -332,7 +347,18 @@ if __name__ == '__main__':
             v_real_scaled = scaler.inverse_transform(np.array(list(v_real.values())).reshape(-1, 1)).reshape(-1)
             p = v_real_scaled[p_idx]
 
-            map = map_at_k(v_predict, v_real_scaled, 3)
+            for comb in combs:
+                p_x = v_predict[comb[0]]
+                p_y = v_predict[comb[1]]
+                r_x = v_real_scaled[comb[0]]
+                r_y = v_real_scaled[comb[1]]
+                binary_cnt += 1
+                if r_x == r_y:
+                    binary_acc += 1
+                elif p_x >= p_y and r_x > r_y:
+                    binary_acc += 1
+                elif p_x <= p_y and r_x < r_y:
+                    binary_acc += 1
 
             rmv_cnt += rmv(v_predict, v_real_scaled)
             precision_cnt += precision_at_k(v_predict, v_real_scaled, 3)
@@ -353,4 +379,5 @@ if __name__ == '__main__':
         print(f'MRR: {mrr_cnt / cnt}')
         print(f'MAP: {map_cnt / cnt}')
         print(f'NDCG: {ndcg_cnt / cnt}')
+        print(f'binary acc: {binary_acc / binary_cnt}')
         print('=====================')

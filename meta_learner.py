@@ -18,6 +18,18 @@ from slice_dataset import get_all_datasets_and_idx
 from feature_loader import *
 from train_test_indice import train_indices, test_indices
 from evaluate_metrics import *
+import itertools
+
+
+def generate_combs(n):
+    indices = list(range(n))
+    combinations = list(itertools.combinations(indices, 2))
+    return combinations
+
+
+combs = generate_combs(len(model_configs))
+
+print(combs)
 
 
 def padding(idxs, elements, k=8):
@@ -145,6 +157,9 @@ for i in range(100):
     map_cnt = 0
     ndcg_cnt = 0
 
+    binary_acc = 0
+    binary_cnt = 0
+
     for x in range(len(prediction_pro)):
         model_list = []
 
@@ -160,6 +175,19 @@ for i in range(100):
         p = prediction_pro[x]
         pad_p = padding(unique_y, p, k=8)
         l = list(accuracies[dataset].values())
+
+        for comb in combs:
+            p_x = pad_p[comb[0]]
+            p_y = pad_p[comb[1]]
+            l_x = l[comb[0]]
+            l_y = l[comb[1]]
+            binary_cnt += 1
+            if l_x == l_y:
+                binary_acc += 1
+            elif p_x >= p_y and l_x > l_y:
+                binary_acc += 1
+            elif p_x <= p_y and l_x < l_y:
+                binary_acc += 1
 
         # map_list.append(map_k(pad_p, l, 3))
 
@@ -197,6 +225,7 @@ for i in range(100):
     print(f'mrr: {mrr_cnt}')
     print(f'map: {map_cnt}')
     print(f'ndcg: {ndcg_cnt}')
+    print(f'binary acc: {binary_acc / binary_cnt}')
     print('=================')
     # ndcg5_t.append(sum(ndcg5) / len(ndcg5))
     # mrr_t.append(sum(mrr) / len(mrr))
