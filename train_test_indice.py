@@ -4,6 +4,8 @@ train_indices = [3, 6, 24, 32, 19, 17, 13, 42, 15, 9, 16, 37, 31, 27, 0, 30, 29,
                  10, 22, 18, 44, 20, 7, 14, 28, 38]
 test_indices = [39, 25, 26, 43, 35, 41, 4, 12, 8]
 
+# train_indices = [ 28, 18, 34, 29, 24, 2, 5, 13, 30, 38, 23, 3, 35, 33, 26, 14, 15, 20, 8, 32, 21, 17, 0, 9, 43, 41, 10, 31, 19, 42, 12, 1, 37, 7, 27, 6 ]
+# test_indices = [ 25, 22, 36, 40, 4, 44, 39, 16, 11 ]
 
 def train_test_split_indices(size, test_ratio, seed=None):
     """
@@ -39,5 +41,5 @@ if __name__ == '__main__':
     # size = 45
     # test_ratio = 0.2
     # train_indices, test_indices = train_test_split_indices(size, test_ratio, seed=42)
-    # print("Train indices: [", ', '.join([str(i) for i in train_indices]), "]")
-    # print("Test indices: [", ', '.join([str(i) for i in test_indices]), "]")
+    # print("train_indices = [", ', '.join([str(i) for i in train_indices]), "]")
+    # print("test_indices = [", ', '.join([str(i) for i in test_indices]), "]")

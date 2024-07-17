@@ -25,26 +25,21 @@ class DatasetGraphGCN(torch.nn.Module):
         super(DatasetGraphGCN, self).__init__()
         self.conv1 = GCNConv(num_features, 1024)
         self.conv2 = GCNConv(1024, output_size)
-        # self.conv2 = GCNConv(1024, 2048)
-        # self.conv3 = GCNConv(2048, 4096)
-        # self.conv4 = GCNConv(4096, output_size)
+        self.res_connection1 = Linear(num_features, 1024)
+        self.res_connection2 = Linear(1024, output_size)
 
     def forward(self, data):
         x, edge_index, edge_weight = data.x, data.edge_index, data.edge_attr
-        x = F.relu(self.conv1(x, edge_index, edge_weight=edge_weight))
-        x = F.dropout(x, training=self.training)
-        x = self.conv2(x, edge_index, edge_weight=edge_weight)
-        return x
 
-        # x, edge_index, edge_weight = data.x, data.edge_index, data.edge_attr
-        # x = F.relu(self.conv1(x, edge_index, edge_weight=edge_weight))
-        # x = F.dropout(x, training=self.training)
-        # x = F.relu(self.conv2(x, edge_index, edge_weight=edge_weight))
-        # x = F.dropout(x, training=self.training)
-        # x = F.relu(self.conv3(x, edge_index, edge_weight=edge_weight))
-        # x = F.dropout(x, training=self.training)
-        # x = self.conv4(x, edge_index, edge_weight=edge_weight)
-        # return x
+        # First convolution with residual connection
+        x_res = self.res_connection1(x)
+        x = F.relu(self.conv1(x, edge_index, edge_weight=edge_weight) + x_res)
+        x = F.dropout(x, training=self.training)
+
+        # Second convolution with residual connection
+        x_res = self.res_connection2(x)
+        x = self.conv2(x, edge_index, edge_weight=edge_weight) + x_res
+        return x
 
 
 class ModelGraphGCN(torch.nn.Module):
@@ -52,13 +47,61 @@ class ModelGraphGCN(torch.nn.Module):
         super(ModelGraphGCN, self).__init__()
         self.conv1 = GCNConv(num_features, 1024)
         self.conv2 = GCNConv(1024, output_size)
+        self.res_connection1 = Linear(num_features, 1024)
+        self.res_connection2 = Linear(1024, output_size)
 
     def forward(self, data):
         x, edge_index, edge_weight = data.x, data.edge_index, data.edge_attr
-        x = F.relu(self.conv1(x, edge_index, edge_weight=edge_weight))
+
+        # First convolution with residual connection
+        x_res = self.res_connection1(x)
+        x = F.relu(self.conv1(x, edge_index, edge_weight=edge_weight) + x_res)
         x = F.dropout(x, training=self.training)
-        x = self.conv2(x, edge_index, edge_weight=edge_weight)
+
+        # Second convolution with residual connection
+        x_res = self.res_connection2(x)
+        x = self.conv2(x, edge_index, edge_weight=edge_weight) + x_res
         return x
+
+# class DatasetGraphGCN(torch.nn.Module):
+#     def __init__(self, num_features, output_size):
+#         super(DatasetGraphGCN, self).__init__()
+#         self.conv1 = GCNConv(num_features, 1024)
+#         self.conv2 = GCNConv(1024, output_size)
+#         # self.conv2 = GCNConv(1024, 2048)
+#         # self.conv3 = GCNConv(2048, 4096)
+#         # self.conv4 = GCNConv(4096, output_size)
+#
+#     def forward(self, data):
+#         x, edge_index, edge_weight = data.x, data.edge_index, data.edge_attr
+#         x = F.relu(self.conv1(x, edge_index, edge_weight=edge_weight))
+#         x = F.dropout(x, training=self.training)
+#         x = self.conv2(x, edge_index, edge_weight=edge_weight)
+#         return x
+#
+#         # x, edge_index, edge_weight = data.x, data.edge_index, data.edge_attr
+#         # x = F.relu(self.conv1(x, edge_index, edge_weight=edge_weight))
+#         # x = F.dropout(x, training=self.training)
+#         # x = F.relu(self.conv2(x, edge_index, edge_weight=edge_weight))
+#         # x = F.dropout(x, training=self.training)
+#         # x = F.relu(self.conv3(x, edge_index, edge_weight=edge_weight))
+#         # x = F.dropout(x, training=self.training)
+#         # x = self.conv4(x, edge_index, edge_weight=edge_weight)
+#         # return x
+#
+#
+# class ModelGraphGCN(torch.nn.Module):
+#     def __init__(self, num_features, output_size):
+#         super(ModelGraphGCN, self).__init__()
+#         self.conv1 = GCNConv(num_features, 1024)
+#         self.conv2 = GCNConv(1024, output_size)
+#
+#     def forward(self, data):
+#         x, edge_index, edge_weight = data.x, data.edge_index, data.edge_attr
+#         x = F.relu(self.conv1(x, edge_index, edge_weight=edge_weight))
+#         x = F.dropout(x, training=self.training)
+#         x = self.conv2(x, edge_index, edge_weight=edge_weight)
+#         return x
 
 
 class RegressionModel(torch.nn.Module):

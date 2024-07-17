@@ -46,9 +46,9 @@ for dataset_config in dataset_configs:
     for _, _, dataset_name in items:
         datasets.append(dataset_name)
         # AutoSGR
-        meta_feature = get_sgr_features(dataset_name)
+        # meta_feature = get_sgr_features(dataset_name)
         # AutoMRM
-        # meta_feature = get_mrm_features(dataset_name)
+        meta_feature = get_mrm_features(dataset_name)
 
         acc = accuracies[dataset_name]
         vec = accuracies_to_idx(acc)
