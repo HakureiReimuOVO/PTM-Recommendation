@@ -195,102 +195,38 @@ if __name__ == '__main__':
     dataset_data = graph_to_torch_geometric(G_dataset)
     model_data = graph_to_torch_geometric(G_model)
 
-    dataset_GCN = DatasetGraphGCN(dataset_data.num_node_features, 512)
-    model_GCN = ModelGraphGCN(model_data.num_node_features, 512)
-    regression_model = RegressionModel(1024, 1)
+    if fin_test:
+        dataset_GCN = DatasetGraphGCN(dataset_data.num_node_features, 512)
+        model_GCN = ModelGraphGCN(model_data.num_node_features, 512)
+        regression_model = RegressionModel(1024, 1)
 
-    optimizer = Adam([
-        {'params': dataset_GCN.parameters(), 'lr': 0.0001},
-        {'params': model_GCN.parameters(), 'lr': 0.0001},
-        {'params': regression_model.parameters(), 'lr': 0.0001}
-    ])
-    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True)
-    criterion = MSELoss()
+        epoch = 100
 
-    input_tuples = []
-    dataset_names = []
+        dataset_GCN.load_state_dict(torch.load(os.path.join(model_save_path, f"dataset_GCN_epoch_{epoch}.pth")))
+        model_GCN.load_state_dict(torch.load(os.path.join(model_save_path, f"model_GCN_epoch_{epoch}.pth")))
+        regression_model.load_state_dict(
+            torch.load(os.path.join(model_save_path, f"regression_model_epoch_{epoch}.pth")))
 
-    for dataset_config in dataset_configs:
-        items = get_all_datasets_and_idx(dataset_name=dataset_config['name'])
-        for _, _, dataset_name in items:
-            dataset_names.append(dataset_name)
-            for model_name in model_configs:
-                input_tuples.append((dataset_name, model_name))
+        input_tuples = []
+        dataset_names = []
 
-    acc = extract_accuracies('result/best_accuracies.csv')
-    # Normalize
-    scaler = norm_acc(acc)
+        for dataset_config in dataset_configs:
+            items = get_all_datasets_and_idx(dataset_name=dataset_config['name'])
+            for _, _, dataset_name in items:
+                dataset_names.append(dataset_name)
+                for model_name in model_configs:
+                    input_tuples.append((dataset_name, model_name))
 
-    # Test: Filter
-    # filtered_tuples = []
-    # for tuple in input_tuples:
-    #     d_name = tuple[0]
-    #     m_name = tuple[1]
-    #     if tuple[0] in acc:
-    #         if tuple[1] in acc[tuple[0]]:
-    #             filtered_tuples.append(tuple)
-    # input_tuples = filtered_tuples
+        acc = extract_accuracies('result/best_accuracies.csv')
+        # Normalize
+        scaler = norm_acc(acc)
 
-    # train_tuples, test_tuples = train_test_split(input_tuples, test_size=0.2, random_state=42)
+        fin_tuples = []
+        for input_tuple in input_tuples:
+            if dataset_names.index(input_tuple[0]) in fin_indices:
+                fin_tuples.append(input_tuple)
 
-    train_tuples = []
-    test_tuples = []
-    for input_tuple in input_tuples:
-        if dataset_names.index(input_tuple[0]) in train_indices:
-            train_tuples.append(input_tuple)
-        elif dataset_names.index(input_tuple[0]) in test_indices:
-            test_tuples.append(input_tuple)
-
-    # gss = GroupShuffleSplit(test_size=0.2, n_splits=1, random_state=42)
-    # train_idx, test_idx = next(gss.split(input_tuples, groups=dataset_names))
-    # train_tuples = [input_tuples[i] for i in train_idx]
-    # test_tuples = [input_tuples[i] for i in test_idx]
-
-    num_epochs = 200
-
-    for epoch in range(num_epochs):
-        # Train
-        dataset_GCN.train()
-        model_GCN.train()
-        regression_model.train()
-        train_loss = 0
-        batch_loss = 0
-
-        optimizer.zero_grad()
-
-        dataset_features = dataset_GCN(dataset_data)
-        model_features = model_GCN(model_data)
-
-        for dataset_name, model_name in tqdm(train_tuples):
-            f_dataset = dataset_features[dataset_node_to_index[dataset_name]]
-            f_model = model_features[model_node_to_index[model_name]]
-
-            combined_features = torch.cat([f_dataset, f_model], dim=0)
-
-            target = torch.tensor([acc[dataset_name][model_name]], dtype=torch.float)
-            output = regression_model(combined_features)
-
-            loss = criterion(output, target)
-
-            train_loss += loss.item()
-            batch_loss += loss
-
-        loss = train_loss / len(train_tuples)
-
-        batch_loss.backward()
-        optimizer.step()
-        scheduler.step(loss)
-
-        print(f'Epoch {epoch + 1}/{num_epochs}, Training loss: {loss}')
-
-        if (epoch + 1) % 10 == 0:
-            torch.save(dataset_GCN.state_dict(), os.path.join(model_save_path, f"dataset_GCN_epoch_{epoch + 1}.pth"))
-            torch.save(model_GCN.state_dict(), os.path.join(model_save_path, f"model_GCN_epoch_{epoch + 1}.pth"))
-            torch.save(regression_model.state_dict(),
-                       os.path.join(model_save_path, f"regression_model_epoch_{epoch + 1}.pth"))
-            print(f'Model saved at epoch {epoch + 1}.')
-
-        # Test
+        # Fin test
         dataset_GCN.eval()
         model_GCN.eval()
         regression_model.eval()
@@ -302,7 +238,7 @@ if __name__ == '__main__':
 
             res_dict = {}
 
-            for dataset_name, model_name in test_tuples:
+            for dataset_name, model_name in fin_tuples:
                 f_dataset = dataset_features[dataset_node_to_index[dataset_name]]
                 f_model = model_features[model_node_to_index[model_name]]
 
@@ -319,14 +255,8 @@ if __name__ == '__main__':
 
                 res_dict[dataset_name][model_name] = real_output[0][0]
 
-                loss = criterion(output, target)
-                test_loss += loss.item()
-
         print(res_dict)
 
-        # Calculate MAP
-
-        # Calculate RMV
         rmv_cnt = 0
         precision_cnt = 0
         recall_cnt = 0
@@ -372,7 +302,6 @@ if __name__ == '__main__':
         print(p_list)
         # print(f'Average RMV: {sum(rmv_list) / len(rmv_list)}')
         # print(f'MAP: {sum(map_list) / len(map_list)}')
-        print(f'Average test loss: {test_loss / len(test_tuples)}')
         print(f'RMV: {rmv_cnt / cnt}')
         print(f'Precision: {precision_cnt / cnt}')
         print(f'Recall: {recall_cnt / cnt}')
@@ -381,3 +310,192 @@ if __name__ == '__main__':
         print(f'NDCG: {ndcg_cnt / cnt}')
         print(f'binary acc: {binary_acc / binary_cnt}')
         print('=====================')
+        pass
+    else:
+        dataset_GCN = DatasetGraphGCN(dataset_data.num_node_features, 512)
+        model_GCN = ModelGraphGCN(model_data.num_node_features, 512)
+        regression_model = RegressionModel(1024, 1)
+
+        optimizer = Adam([
+            {'params': dataset_GCN.parameters(), 'lr': 0.0001},
+            {'params': model_GCN.parameters(), 'lr': 0.0001},
+            {'params': regression_model.parameters(), 'lr': 0.0001}
+        ])
+        scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True)
+        criterion = MSELoss()
+
+        input_tuples = []
+        dataset_names = []
+
+        for dataset_config in dataset_configs:
+            items = get_all_datasets_and_idx(dataset_name=dataset_config['name'])
+            for _, _, dataset_name in items:
+                dataset_names.append(dataset_name)
+                for model_name in model_configs:
+                    input_tuples.append((dataset_name, model_name))
+
+        acc = extract_accuracies('result/best_accuracies.csv')
+        # Normalize
+        scaler = norm_acc(acc)
+
+        # Test: Filter
+        # filtered_tuples = []
+        # for tuple in input_tuples:
+        #     d_name = tuple[0]
+        #     m_name = tuple[1]
+        #     if tuple[0] in acc:
+        #         if tuple[1] in acc[tuple[0]]:
+        #             filtered_tuples.append(tuple)
+        # input_tuples = filtered_tuples
+
+        # train_tuples, test_tuples = train_test_split(input_tuples, test_size=0.2, random_state=42)
+
+        train_tuples = []
+        test_tuples = []
+        for input_tuple in input_tuples:
+            if dataset_names.index(input_tuple[0]) in train_indices:
+                train_tuples.append(input_tuple)
+            elif dataset_names.index(input_tuple[0]) in test_indices:
+                test_tuples.append(input_tuple)
+
+        # gss = GroupShuffleSplit(test_size=0.2, n_splits=1, random_state=42)
+        # train_idx, test_idx = next(gss.split(input_tuples, groups=dataset_names))
+        # train_tuples = [input_tuples[i] for i in train_idx]
+        # test_tuples = [input_tuples[i] for i in test_idx]
+
+        num_epochs = 200
+
+        for epoch in range(num_epochs):
+            # Train
+            dataset_GCN.train()
+            model_GCN.train()
+            regression_model.train()
+            train_loss = 0
+            batch_loss = 0
+
+            optimizer.zero_grad()
+
+            dataset_features = dataset_GCN(dataset_data)
+            model_features = model_GCN(model_data)
+
+            for dataset_name, model_name in tqdm(train_tuples):
+                f_dataset = dataset_features[dataset_node_to_index[dataset_name]]
+                f_model = model_features[model_node_to_index[model_name]]
+
+                combined_features = torch.cat([f_dataset, f_model], dim=0)
+
+                target = torch.tensor([acc[dataset_name][model_name]], dtype=torch.float)
+                output = regression_model(combined_features)
+
+                loss = criterion(output, target)
+
+                train_loss += loss.item()
+                batch_loss += loss
+
+            loss = train_loss / len(train_tuples)
+
+            batch_loss.backward()
+            optimizer.step()
+            scheduler.step(loss)
+
+            print(f'Epoch {epoch + 1}/{num_epochs}, Training loss: {loss}')
+
+            if (epoch + 1) % 10 == 0:
+                torch.save(dataset_GCN.state_dict(),
+                           os.path.join(model_save_path, f"dataset_GCN_epoch_{epoch + 1}.pth"))
+                torch.save(model_GCN.state_dict(), os.path.join(model_save_path, f"model_GCN_epoch_{epoch + 1}.pth"))
+                torch.save(regression_model.state_dict(),
+                           os.path.join(model_save_path, f"regression_model_epoch_{epoch + 1}.pth"))
+                print(f'Model saved at epoch {epoch + 1}.')
+
+            # Test
+            dataset_GCN.eval()
+            model_GCN.eval()
+            regression_model.eval()
+            test_loss = 0
+
+            with torch.no_grad():
+                dataset_features = dataset_GCN(dataset_data)
+                model_features = model_GCN(model_data)
+
+                res_dict = {}
+
+                for dataset_name, model_name in test_tuples:
+                    f_dataset = dataset_features[dataset_node_to_index[dataset_name]]
+                    f_model = model_features[model_node_to_index[model_name]]
+
+                    combined_features = torch.cat([f_dataset, f_model], dim=0)
+
+                    target = torch.tensor([acc[dataset_name][model_name]], dtype=torch.float)
+                    output = regression_model(combined_features)
+
+                    real_target = scaler.inverse_transform(np.array(target).reshape(1, 1))
+                    real_output = scaler.inverse_transform(np.array(output).reshape(1, 1))
+
+                    if dataset_name not in res_dict:
+                        res_dict[dataset_name] = {}
+
+                    res_dict[dataset_name][model_name] = real_output[0][0]
+
+                    loss = criterion(output, target)
+                    test_loss += loss.item()
+
+            print(res_dict)
+
+            # Calculate MAP
+
+            # Calculate RMV
+            rmv_cnt = 0
+            precision_cnt = 0
+            recall_cnt = 0
+            mrr_cnt = 0
+            map_cnt = 0
+            ndcg_cnt = 0
+            cnt = 0
+            p_list = []
+
+            binary_cnt = 0
+            binary_acc = 0
+
+            for k, v in res_dict.items():
+                v_real = acc[k]
+                v_predict = list(v.values())
+                p_idx = v_predict.index(max(v.values()))
+
+                v_real_scaled = scaler.inverse_transform(np.array(list(v_real.values())).reshape(-1, 1)).reshape(-1)
+                p = v_real_scaled[p_idx]
+
+                for comb in combs:
+                    p_x = v_predict[comb[0]]
+                    p_y = v_predict[comb[1]]
+                    r_x = v_real_scaled[comb[0]]
+                    r_y = v_real_scaled[comb[1]]
+                    binary_cnt += 1
+                    if r_x == r_y:
+                        binary_acc += 1
+                    elif p_x >= p_y and r_x > r_y:
+                        binary_acc += 1
+                    elif p_x <= p_y and r_x < r_y:
+                        binary_acc += 1
+
+                rmv_cnt += rmv(v_predict, v_real_scaled)
+                precision_cnt += precision_at_k(v_predict, v_real_scaled, 3)
+                recall_cnt += recall_at_k(v_predict, v_real_scaled, 3)
+                mrr_cnt += mrr_at_k(v_predict, v_real_scaled, 3)
+                map_cnt += map_at_k(v_predict, v_real_scaled, 3)
+                ndcg_cnt += ndcg_at_k(v_predict, v_real_scaled, 3)
+                cnt += 1
+                p_list.append((p_idx, p))
+
+            print(p_list)
+            # print(f'Average RMV: {sum(rmv_list) / len(rmv_list)}')
+            # print(f'MAP: {sum(map_list) / len(map_list)}')
+            print(f'Average test loss: {test_loss / len(test_tuples)}')
+            print(f'RMV: {rmv_cnt / cnt}')
+            print(f'Precision: {precision_cnt / cnt}')
+            print(f'Recall: {recall_cnt / cnt}')
+            print(f'MRR: {mrr_cnt / cnt}')
+            print(f'MAP: {map_cnt / cnt}')
+            print(f'NDCG: {ndcg_cnt / cnt}')
+            print(f'binary acc: {binary_acc / binary_cnt}')
+            print('=====================')

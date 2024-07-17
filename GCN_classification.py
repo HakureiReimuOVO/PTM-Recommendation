@@ -12,7 +12,7 @@ from config import model_configs
 from dataset_graph import load_graph, DATASET_GRAPH_OUTPUT_PATH
 from acc_loader import *
 from evaluate_metrics import *
-from train_test_indice import train_indices, test_indices
+from train_test_indice import *
 
 model_save_path = 'saved_models'
 
@@ -227,6 +227,7 @@ if __name__ == '__main__':
 
     score_dict = {}
     accuracies = extract_accuracies('result/best_accuracies.csv')
+
     for node in G.nodes():
         if not G.nodes[node]['type'] == 'label':
             # acc = extract_dataset_accuracies(node, 'cifar10_results')
@@ -237,38 +238,49 @@ if __name__ == '__main__':
 
     data = from_networkx_to_torch_geometric(G, node_to_index, type_to_index, score_dict, num_classes=8)
 
-    model = GCN(num_features=data.num_node_features, num_classes=8)
-    optimizer = Adam(model.parameters(), lr=1e-3)
-    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True)
-
-    criterion = MSELoss()
-    # criterion = CrossEntropyLoss()
-
-    # train_mask = torch.tensor([node_data['type'] == 'dataset' for node_id, node_data in G.nodes(data=True)],
-    #                           dtype=torch.bool)
-
-    # train_mask, test_mask = split_data(G)
-
     label_cnt = 0
     for node in G.nodes():
         if G.nodes[node]['type'] == 'label':
             label_cnt += 1
 
-    train_mask = [False for idx in range(len(G.nodes))]
-    test_mask = [False for idx in range(len(G.nodes))]
-    for train_indice in train_indices:
-        train_mask[train_indice + label_cnt] = True
-    for test_indices in test_indices:
-        test_mask[test_indices + label_cnt] = True
-    train_mask = torch.tensor(train_mask, dtype=torch.bool)
-    test_mask = torch.tensor(test_mask, dtype=torch.bool)
+    if fin_test:
+        model = GCN(num_features=data.num_node_features, num_classes=8)
+        epoch = 100
+        model.load_state_dict(torch.load(os.path.join(model_save_path, f"classification_GCN_epoch_{epoch}.pth")))
+        fin_mask = [False for idx in range(len(G.nodes))]
+        for fin_indice in fin_indices:
+            fin_mask[fin_indice + label_cnt] = True
+        fin_mask = torch.tensor(fin_mask, dtype=torch.bool)
+        test(model, data, fin_mask)
+    else:
+        model = GCN(num_features=data.num_node_features, num_classes=8)
+        optimizer = Adam(model.parameters(), lr=1e-3)
+        scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True)
 
-    for epoch in range(200):
-        loss = train(model, data, optimizer, criterion, train_mask)
-        test(model, data, test_mask)
-        print(f'Epoch {epoch + 1}: Loss {loss:.4f}')
-        # print(f'Epoch {epoch + 1}: Loss {loss:.4f}, Test Accuracy: {accuracy * 100:.2f}%, RMV: {rmv * 100}%')
-        scheduler.step(loss)
-        if (epoch + 1) % 10 == 0:
-            torch.save(model.state_dict(), os.path.join(model_save_path, f"classification_GCN_epoch_{epoch + 1}.pth"))
-            print(f'Model saved at epoch {epoch + 1}.')
+        criterion = MSELoss()
+        # criterion = CrossEntropyLoss()
+
+        # train_mask = torch.tensor([node_data['type'] == 'dataset' for node_id, node_data in G.nodes(data=True)],
+        #                           dtype=torch.bool)
+
+        # train_mask, test_mask = split_data(G)
+
+        train_mask = [False for idx in range(len(G.nodes))]
+        test_mask = [False for idx in range(len(G.nodes))]
+        for train_indice in train_indices:
+            train_mask[train_indice + label_cnt] = True
+        for test_indice in test_indices:
+            test_mask[test_indice + label_cnt] = True
+        train_mask = torch.tensor(train_mask, dtype=torch.bool)
+        test_mask = torch.tensor(test_mask, dtype=torch.bool)
+
+        for epoch in range(200):
+            loss = train(model, data, optimizer, criterion, train_mask)
+            test(model, data, test_mask)
+            print(f'Epoch {epoch + 1}: Loss {loss:.4f}')
+            # print(f'Epoch {epoch + 1}: Loss {loss:.4f}, Test Accuracy: {accuracy * 100:.2f}%, RMV: {rmv * 100}%')
+            scheduler.step(loss)
+            if (epoch + 1) % 10 == 0:
+                torch.save(model.state_dict(),
+                           os.path.join(model_save_path, f"classification_GCN_epoch_{epoch + 1}.pth"))
+                print(f'Model saved at epoch {epoch + 1}.')
