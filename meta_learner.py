@@ -179,9 +179,9 @@ if fin_test:
             binary_cnt += 1
             if l_x == l_y:
                 binary_acc += 1
-            elif p_x >= p_y and l_x > l_y:
+            elif p_x > p_y and l_x > l_y:
                 binary_acc += 1
-            elif p_x <= p_y and l_x < l_y:
+            elif p_x < p_y and l_x < l_y:
                 binary_acc += 1
 
         rmv_cnt += rmv(pad_p, l)
@@ -262,9 +262,9 @@ else:
                 binary_cnt += 1
                 if l_x == l_y:
                     binary_acc += 1
-                elif p_x >= p_y and l_x > l_y:
+                elif p_x > p_y and l_x > l_y:
                     binary_acc += 1
-                elif p_x <= p_y and l_x < l_y:
+                elif p_x < p_y and l_x < l_y:
                     binary_acc += 1
 
             # map_list.append(map_k(pad_p, l, 3))

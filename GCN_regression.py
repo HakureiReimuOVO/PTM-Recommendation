@@ -18,6 +18,7 @@ from model_graph import MODEL_GRAPH_OUTPUT_PATH
 from acc_loader import *
 from train_test_indice import *
 from evaluate_metrics import *
+from slice_dataset import get_all_datasets_and_idx
 
 model_save_path = 'saved_models'
 
@@ -200,7 +201,7 @@ if __name__ == '__main__':
         model_GCN = ModelGraphGCN(model_data.num_node_features, 512)
         regression_model = RegressionModel(1024, 1)
 
-        epoch = 100
+        epoch = 60
 
         dataset_GCN.load_state_dict(torch.load(os.path.join(model_save_path, f"dataset_GCN_epoch_{epoch}.pth")))
         model_GCN.load_state_dict(torch.load(os.path.join(model_save_path, f"model_GCN_epoch_{epoch}.pth")))
@@ -285,9 +286,9 @@ if __name__ == '__main__':
                 binary_cnt += 1
                 if r_x == r_y:
                     binary_acc += 1
-                elif p_x >= p_y and r_x > r_y:
+                elif p_x > p_y and r_x > r_y:
                     binary_acc += 1
-                elif p_x <= p_y and r_x < r_y:
+                elif p_x < p_y and r_x < r_y:
                     binary_acc += 1
 
             rmv_cnt += rmv(v_predict, v_real_scaled)
@@ -473,9 +474,9 @@ if __name__ == '__main__':
                     binary_cnt += 1
                     if r_x == r_y:
                         binary_acc += 1
-                    elif p_x >= p_y and r_x > r_y:
+                    elif p_x > p_y and r_x > r_y:
                         binary_acc += 1
-                    elif p_x <= p_y and r_x < r_y:
+                    elif p_x < p_y and r_x < r_y:
                         binary_acc += 1
 
                 rmv_cnt += rmv(v_predict, v_real_scaled)

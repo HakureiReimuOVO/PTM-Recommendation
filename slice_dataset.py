@@ -2,6 +2,7 @@ import os
 import json
 from itertools import combinations
 from datasets import load_from_disk
+from acc_loader import datasets_with_acc
 
 from feature_extraction import get_dataset_features
 from config import dataset_configs, chunk_size, root_path
@@ -73,6 +74,7 @@ def get_all_datasets_and_idx(dataset_name):
         dataset_name
     """
     datasets = []
+    datasets_present = datasets_with_acc()
 
     for dataset_config in dataset_configs:
         if dataset_name == dataset_config['name']:
@@ -84,14 +86,15 @@ def get_all_datasets_and_idx(dataset_name):
 
                 for comb in label_combinations:
                     comb_name = "_".join(map(str, comb))
-                    sub_dataset_path = f"{root_path}/{dataset_name}_{comb_name}"
-                    sub_dataset = load_from_disk(sub_dataset_path)
+                    if f"{dataset_name}_{comb_name}" in datasets_present:
+                        sub_dataset_path = f"{root_path}/{dataset_name}_{comb_name}"
+                        sub_dataset = load_from_disk(sub_dataset_path)
 
-                    index_map_path = os.path.join(sub_dataset_path, "index_map.json")
-                    with open(index_map_path, 'r') as f:
-                        index_map = json.load(f)
+                        index_map_path = os.path.join(sub_dataset_path, "index_map.json")
+                        with open(index_map_path, 'r') as f:
+                            index_map = json.load(f)
 
-                    datasets.append((sub_dataset, index_map, f"{dataset_name}_{comb_name}"))
+                        datasets.append((sub_dataset, index_map, f"{dataset_name}_{comb_name}"))
 
     return datasets
 

@@ -1,3 +1,4 @@
+import json
 import os
 import numpy as np
 import torch
@@ -5,18 +6,23 @@ import torch.nn.functional as F
 import pickle
 from PIL import Image
 from matplotlib import pyplot as plt
+from sklearn.preprocessing import MinMaxScaler
 from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms
+
 from tqdm import tqdm
 import networkx as nx
 from sklearn.metrics.pairwise import cosine_similarity
-from config import *
+from torchvision import transforms
+
 from model_loader import get_model
+from config import model_configs
 
 # from ptflops import get_model_complexity_info
 
 TINY_IMAGENET_PATH = 'datasets/tiny_imagenet'
 MODEL_GRAPH_OUTPUT_PATH = 'result/model_graph.pkl'
+MODEL_FEATURE_OUTPUT_PATH = 'result/model_features.npy'
+NUMERIC_FEATURE_OUTPUT_PATH = 'result/model_numeric_features.json'
 
 
 class TinyImageNetDataset(Dataset):
@@ -27,7 +33,7 @@ class TinyImageNetDataset(Dataset):
 
         for root, _, files in os.walk(root_dir):
             for file in files:
-                if file.lower().endswith('.jpeg'):
+                if file.lower().endswith('.jpeg') and not file.lower().startswith('.'):
                     self.image_paths.append(os.path.join(root, file))
 
     def __len__(self):
@@ -103,12 +109,20 @@ def get_model_params(model):
     return total_params, trainable_params
 
 
-def create_graph(model_names, model_features, model_similarities):
+def create_graph(model_names, model_features, numeric_features, model_similarities):
     G = nx.Graph()
 
-    for idx, model_name in enumerate(model_names):
+    numeric_features_dim = 4
+    num_feats = np.array([[data["params"], data["flops"]] for data in numeric_features.values()])
+    scaler = MinMaxScaler()
+    normalized_features = scaler.fit_transform(num_feats)
+    expanded_features = np.repeat(normalized_features, numeric_features_dim, axis=1)
+    num_feat_dict = {name: expanded_features[i] for i, name in enumerate(numeric_features.keys())}
+
+    for model_name in model_names:
         G.add_node(model_name)
-        G.nodes[model_name]['feature'] = model_features[idx]
+        G.nodes[model_name]['features'] = np.concatenate((model_features[model_name], num_feat_dict[model_name]))
+        # G.nodes[model_name]['feature'] = model_features[model_names]
 
     for i in range(len(model_names)):
         for j in range(i + 1, len(model_names)):
@@ -128,6 +142,7 @@ def load_graph(path):
         graph = pickle.load(f)
     return graph
 
+
 def show_graph(G):
     pos = nx.spring_layout(G, k=0.5)
     edge_labels = nx.get_edge_attributes(G, 'weight')
@@ -137,47 +152,85 @@ def show_graph(G):
     plt.show()
 
 
-if __name__ == '__main__':
-    G = load_graph(MODEL_GRAPH_OUTPUT_PATH)
-    show_graph(G)
+def get_model_features():
+    global model_configs
+    transform = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
 
-    # transform = transforms.Compose([
-    #     transforms.Resize((224, 224)),
-    #     transforms.ToTensor(),
-    #     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    # ])
-    #
-    # input_size = (3, 224, 224)
-    #
-    # dataset = TinyImageNetDataset(root_dir=TINY_IMAGENET_PATH, transform=transform)
-    #
-    #
-    # # Test
+    dataset = TinyImageNetDataset(root_dir=TINY_IMAGENET_PATH, transform=transform)
+
+    print(len(dataset))
+
+    # Test
     # dataset = torch.utils.data.Subset(dataset, range(32))
-    # data_loader = DataLoader(dataset, batch_size=32, shuffle=False)
-    # model_features = []
+
+    data_loader = DataLoader(dataset, batch_size=32, shuffle=False)
+    model_features = {}
+
+    # Test
+    # model_configs = model_configs[:2]
+
+    for model_config in model_configs:
+        model = get_model(model_config)
+        feature = extract_features(model_config, model, data_loader)
+        pooled_feature = average_pool_to_fixed_length(feature, target_length=512)
+        norm = np.linalg.norm(pooled_feature, axis=-1, keepdims=True)
+        norm_feature = pooled_feature / norm
+
+        model_features[model_config] = norm_feature.cpu().numpy()
+
+        # params, trainable_params = get_model_params(model)
+        # flops, _ = get_model_complexity_info(model, input_size, as_strings=False, print_per_layer_stat=False)
+        # print(f'Total params: {params}, Flops: {flops}')
+
+    np.save(MODEL_FEATURE_OUTPUT_PATH, model_features)
+
+
+def load_data(feature_path, numeric_feature_path):
+    features = np.load(feature_path, allow_pickle=True).item()
+
+    with open(numeric_feature_path, 'r') as f:
+        numeric_features = json.load(f)
+
+    return features, numeric_features
+
+
+# def get_model_numeric_features():
+#     global model_configs
+#     input_size = (3, 224, 224)
+#     feat_dict = {}
+#     for model_config in model_configs:
+#         model = get_model(model_config)
+#         params, trainable_params = get_model_params(model)
+#         flops, _ = get_model_complexity_info(model, input_size, as_strings=False, print_per_layer_stat=False)
+#         feat_dict[model_config] = {
+#             'params': params,
+#             'flops': flops,
+#         }
+#
+#         print(f'Total params: {params}, Flops: {flops}')
+#
+#     with open(NUMERIC_FEATURE_OUTPUT_PATH, 'w') as f:
+#         json.dump(feat_dict, f)
+
+
+if __name__ == '__main__':
+    # get_model_features()
+    # get_model_numeric_features()
+
+    # model_features, numeric_features = load_data(MODEL_FEATURE_OUTPUT_PATH, NUMERIC_FEATURE_OUTPUT_PATH)
     #
-    # # Test
-    # # model_configs = model_configs[:2]
+    # model_features_matrix = np.array(list(model_features.values()))
     #
-    # for model_config in model_configs:
-    #     model = get_model(model_config)
-    #     feature = extract_features(model_config, model, data_loader)
-    #     pooled_feature = average_pool_to_fixed_length(feature, target_length=512)
-    #     norm = np.linalg.norm(pooled_feature, axis=-1, keepdims=True)
-    #     norm_feature = pooled_feature / norm
+    # similarity_matrix = cosine_similarity(model_features_matrix)
     #
-    #     model_features.append(norm_feature.cpu().numpy())
-    #
-    #     # params, trainable_params = get_model_params(model)
-    #     # flops, _ = get_model_complexity_info(model, input_size, as_strings=False, print_per_layer_stat=False)
-    #     # print(f'Total params: {params}, Flops: {flops}')
-    #
-    # model_features = np.array(model_features)
-    #
-    # similarity_matrix = cosine_similarity(model_features)
-    #
-    # G = create_graph(model_names=model_configs, model_features=model_features, model_similarities=similarity_matrix)
+    # G = create_graph(model_names=model_configs, model_features=model_features, numeric_features=numeric_features,
+    #                  model_similarities=similarity_matrix)
     #
     # save_graph(G, MODEL_GRAPH_OUTPUT_PATH)
-    # print(G)
+
+    G = load_graph(MODEL_GRAPH_OUTPUT_PATH)
+    print(G)

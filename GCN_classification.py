@@ -144,9 +144,9 @@ def test(model, data, test_mask):
                 binary_cnt += 1
                 if r_x == r_y:
                     binary_acc += 1
-                elif p_x >= p_y and r_x > r_y:
+                elif p_x > p_y and r_x > r_y:
                     binary_acc += 1
-                elif p_x <= p_y and r_x < r_y:
+                elif p_x < p_y and r_x < r_y:
                     binary_acc += 1
 
             cnt += 1
@@ -231,6 +231,7 @@ if __name__ == '__main__':
     for node in G.nodes():
         if not G.nodes[node]['type'] == 'label':
             # acc = extract_dataset_accuracies(node, 'cifar10_results')
+
             acc = accuracies[node]
             vec = accuracies_to_regression_vector(acc)
             # vec = accuracies_to_classification_vector(acc)

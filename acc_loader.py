@@ -6,7 +6,6 @@ import pandas as pd
 
 from config import dataset_configs
 from feature_loader import get_mrm_features
-from slice_dataset import get_all_datasets_and_idx
 
 
 def format_dataset_name(dataset_name):
@@ -64,8 +63,14 @@ def accuracies_to_idx(accuracies):
     return idx
 
 
+def datasets_with_acc():
+    acc = extract_accuracies('result/best_accuracies.csv')
+    return list(acc.keys())
+
+
 if __name__ == '__main__':
-    tmp = extract_accuracies('result/best_accuracies.csv')
+    pass
+    # tmp = extract_accuracies('result/best_accuracies.csv')
     # for dataset_config in dataset_configs:
     #     items = get_all_datasets_and_idx(dataset_name=dataset_config['name'])
     #     for _, _, dataset_name in items:
