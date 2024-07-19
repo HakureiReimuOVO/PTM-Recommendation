@@ -121,7 +121,7 @@ def create_graph(model_names, model_features, numeric_features, model_similariti
 
     for model_name in model_names:
         G.add_node(model_name)
-        G.nodes[model_name]['features'] = np.concatenate((model_features[model_name], num_feat_dict[model_name]))
+        G.nodes[model_name]['feature'] = np.concatenate((model_features[model_name], num_feat_dict[model_name]))
         # G.nodes[model_name]['feature'] = model_features[model_names]
 
     for i in range(len(model_names)):
@@ -221,16 +221,16 @@ if __name__ == '__main__':
     # get_model_features()
     # get_model_numeric_features()
 
-    # model_features, numeric_features = load_data(MODEL_FEATURE_OUTPUT_PATH, NUMERIC_FEATURE_OUTPUT_PATH)
-    #
-    # model_features_matrix = np.array(list(model_features.values()))
-    #
-    # similarity_matrix = cosine_similarity(model_features_matrix)
-    #
-    # G = create_graph(model_names=model_configs, model_features=model_features, numeric_features=numeric_features,
-    #                  model_similarities=similarity_matrix)
-    #
-    # save_graph(G, MODEL_GRAPH_OUTPUT_PATH)
+    model_features, numeric_features = load_data(MODEL_FEATURE_OUTPUT_PATH, NUMERIC_FEATURE_OUTPUT_PATH)
 
-    G = load_graph(MODEL_GRAPH_OUTPUT_PATH)
-    print(G)
+    model_features_matrix = np.array(list(model_features.values()))
+
+    similarity_matrix = cosine_similarity(model_features_matrix)
+
+    G = create_graph(model_names=model_configs, model_features=model_features, numeric_features=numeric_features,
+                     model_similarities=similarity_matrix)
+
+    save_graph(G, MODEL_GRAPH_OUTPUT_PATH)
+
+    # G = load_graph(MODEL_GRAPH_OUTPUT_PATH)
+    # print(G)

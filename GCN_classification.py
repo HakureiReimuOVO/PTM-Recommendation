@@ -122,10 +122,22 @@ def test(model, data, test_mask):
         real = data.y[test_mask]
 
         rmv_cnt = 0
+        rmv2_cnt = 0
+        rmv3_cnt = 0
+        rmv4_cnt = 0
+        rmv5_cnt = 0
         precision_cnt = 0
         recall_cnt = 0
         mrr_cnt = 0
+        mrr2_cnt = 0
+        mrr3_cnt = 0
+        mrr4_cnt = 0
+        mrr5_cnt = 0
         map_cnt = 0
+        map2_cnt = 0
+        map3_cnt = 0
+        map4_cnt = 0
+        map5_cnt = 0
         ndcg_cnt = 0
         cnt = 0
 
@@ -150,18 +162,49 @@ def test(model, data, test_mask):
                     binary_acc += 1
 
             cnt += 1
-            rmv_cnt += rmv(p, r)
+            rmv_cnt += rmv(p, r, 1)
+            rmv2_cnt += rmv(p, r, 2)
+            rmv3_cnt += rmv(p, r, 3)
+            rmv4_cnt += rmv(p, r, 4)
+            rmv5_cnt += rmv(p, r, 5)
+
             precision_cnt += precision_at_k(p, r, 3)
             recall_cnt += recall_at_k(p, r, 3)
-            mrr_cnt += mrr_at_k(p, r, 3)
-            map_cnt += map_at_k(p, r, 3)
+
+            mrr_cnt += mrr_at_k(p, r, 1)
+            mrr2_cnt += mrr_at_k(p, r, 2)
+            mrr3_cnt += mrr_at_k(p, r, 3)
+            mrr4_cnt += mrr_at_k(p, r, 4)
+            mrr5_cnt += mrr_at_k(p, r, 5)
+
+            map_cnt += map_at_k(p, r, 1)
+            map2_cnt += map_at_k(p, r, 2)
+            map3_cnt += map_at_k(p, r, 3)
+            map4_cnt += map_at_k(p, r, 4)
+            map5_cnt += map_at_k(p, r, 5)
+
             ndcg_cnt += ndcg_at_k(p, r, 3)
 
         print(f'RMV: {rmv_cnt / cnt}')
+        print(f'RMV2: {rmv2_cnt / cnt}')
+        print(f'RMV3: {rmv3_cnt / cnt}')
+        print(f'RMV4: {rmv4_cnt / cnt}')
+        print(f'RMV5: {rmv5_cnt / cnt}')
+
         print(f'Precision: {precision_cnt / cnt}')
         print(f'Recall: {recall_cnt / cnt}')
         print(f'MRR: {mrr_cnt / cnt}')
+        print(f'MRR2: {mrr2_cnt / cnt}')
+        print(f'MRR3: {mrr3_cnt / cnt}')
+        print(f'MRR4: {mrr4_cnt / cnt}')
+        print(f'MRR5: {mrr5_cnt / cnt}')
+
         print(f'MAP: {map_cnt / cnt}')
+        print(f'MAP2: {map2_cnt / cnt}')
+        print(f'MAP3: {map3_cnt / cnt}')
+        print(f'MAP4: {map4_cnt / cnt}')
+        print(f'MAP5: {map5_cnt / cnt}')
+
         print(f'NDCG: {ndcg_cnt / cnt}')
         print(f'binary acc: {binary_acc / binary_cnt}')
         print(f'=================================')
@@ -231,11 +274,11 @@ if __name__ == '__main__':
     for node in G.nodes():
         if not G.nodes[node]['type'] == 'label':
             # acc = extract_dataset_accuracies(node, 'cifar10_results')
-
-            acc = accuracies[node]
-            vec = accuracies_to_regression_vector(acc)
-            # vec = accuracies_to_classification_vector(acc)
-            score_dict[node] = vec
+            if node in accuracies:
+                acc = accuracies[node]
+                vec = accuracies_to_regression_vector(acc)
+                # vec = accuracies_to_classification_vector(acc)
+                score_dict[node] = vec
 
     data = from_networkx_to_torch_geometric(G, node_to_index, type_to_index, score_dict, num_classes=8)
 

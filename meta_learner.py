@@ -1,5 +1,6 @@
 import os
 import pickle
+from collections import Counter
 
 import numpy as np
 import pandas as pd
@@ -54,15 +55,27 @@ y_list = []
 datasets = []
 models = model_configs
 
+# meta = 'img'
+# meta = 'mrm'
+meta = 'sgr'
+
 accuracies = extract_accuracies('result/best_accuracies.csv')
 for dataset_config in dataset_configs:
     items = get_all_datasets_and_idx(dataset_name=dataset_config['name'])
     for _, _, dataset_name in items:
         datasets.append(dataset_name)
-        # AutoSGR
+        # meta_feature = get_imgdataset2vec_features(dataset_name)
+        # meta_feature = get_mrm_features(dataset_name)
         # meta_feature = get_sgr_features(dataset_name)
-        # AutoMRM
-        meta_feature = get_mrm_features(dataset_name)
+        if meta == 'img':
+            # ImageDataset2Vec
+            meta_feature = get_imgdataset2vec_features(dataset_name)
+        elif meta == 'mrm':
+            # AutoMRM
+            meta_feature = get_mrm_features(dataset_name)
+        elif meta == 'sgr':
+            # AutoSGR
+            meta_feature = get_sgr_features(dataset_name)
 
         acc = accuracies[dataset_name]
         vec = accuracies_to_idx(acc)
@@ -109,9 +122,10 @@ mrr_t = []
 map_t = []
 
 # Select the meta learner to use Ensemble learning or not according to the task
-model = RandomForestClassifier()
-# model = BaggingClassifier(base_estimator=SVC(probability=True), max_samples=0.8, max_features=0.8, n_estimators=100,
+# model = RandomForestClassifier()
+# model = BaggingClassifier(base_estimator=SVC(probability=True), max_samples=0.8, max_features=0.8, n_estimators=1,
 #                           bootstrap_features=True, n_jobs=-1)
+model = XGBClassifier(random_state=1, learning_rate=0.1, use_label_encoder=False)
 pipe_lr = make_pipeline(StandardScaler(), model)
 
 res = []
@@ -143,18 +157,39 @@ y_test = np.array(y_test_list)
 x_fin = np.array(x_fin)
 y_fin = np.array(y_fin)
 
+train_labels = Counter(y_train)
+test_labels = Counter(y_test)
+
+print("Training Labels:", train_labels)
+print("Testing Labels:", test_labels)
+
 if fin_test:
-    epoch = 100
-    with open(os.path.join(model_save_path, f"meta_learner_epoch_90.pkl"), 'rb') as m:
+    epoch = 50
+    with open(os.path.join(model_save_path, f"{meta}_meta_learner_epoch_{epoch}.pkl"), 'rb') as m:
         pipe_lr = pickle.load(m)
     prediction_pro = pipe_lr.predict_proba(x_fin)
     rmv_cnt = 0
+    rmv2_cnt = 0
+    rmv3_cnt = 0
+    rmv4_cnt = 0
+    rmv5_cnt = 0
     precision_cnt = 0
     recall_cnt = 0
     mrr_cnt = 0
+    mrr2_cnt = 0
+    mrr3_cnt = 0
+    mrr4_cnt = 0
+    mrr5_cnt = 0
     map_cnt = 0
+    map2_cnt = 0
+    map3_cnt = 0
+    map4_cnt = 0
+    map5_cnt = 0
     ndcg_cnt = 0
-
+    ndcg2_cnt = 0
+    ndcg3_cnt = 0
+    ndcg4_cnt = 0
+    ndcg5_cnt = 0
     binary_acc = 0
     binary_cnt = 0
 
@@ -185,28 +220,80 @@ if fin_test:
                 binary_acc += 1
 
         rmv_cnt += rmv(pad_p, l)
+        rmv2_cnt += rmv(pad_p, l, 2)
+        rmv3_cnt += rmv(pad_p, l, 3)
+        rmv4_cnt += rmv(pad_p, l, 4)
+        rmv5_cnt += rmv(pad_p, l, 5)
         precision_cnt += precision_at_k(pad_p, l, 3)
         recall_cnt += recall_at_k(pad_p, l, 3)
-        mrr_cnt += mrr_at_k(pad_p, l, 3)
-        map_cnt += map_at_k(pad_p, l, 3)
-        ndcg_cnt += ndcg_at_k(pad_p, l, 3)
+        a = mrr_at_k(pad_p, l, 1)
+        mrr_cnt += mrr_at_k(pad_p, l, 1)
+        mrr2_cnt += mrr_at_k(pad_p, l, 2)
+        mrr3_cnt += mrr_at_k(pad_p, l, 3)
+        mrr4_cnt += mrr_at_k(pad_p, l, 4)
+        mrr5_cnt += mrr_at_k(pad_p, l, 5)
+        map_cnt += map_at_k(pad_p, l, 1)
+        map2_cnt += map_at_k(pad_p, l, 2)
+        map3_cnt += map_at_k(pad_p, l, 3)
+        map4_cnt += map_at_k(pad_p, l, 4)
+        map5_cnt += map_at_k(pad_p, l, 5)
+        ndcg_cnt += ndcg_at_k(pad_p, l, 1)
+        ndcg2_cnt += ndcg_at_k(pad_p, l, 2)
+        ndcg3_cnt += ndcg_at_k(pad_p, l, 3)
+        ndcg4_cnt += ndcg_at_k(pad_p, l, 4)
+        ndcg5_cnt += ndcg_at_k(pad_p, l, 5)
+
 
     rmv_cnt = rmv_cnt / len(prediction_pro)
+    rmv2_cnt = rmv2_cnt / len(prediction_pro)
+    rmv3_cnt = rmv3_cnt / len(prediction_pro)
+    rmv4_cnt = rmv4_cnt / len(prediction_pro)
+    rmv5_cnt = rmv5_cnt/ len(prediction_pro)
     precision_cnt = precision_cnt / len(prediction_pro)
     recall_cnt = recall_cnt / len(prediction_pro)
     mrr_cnt = mrr_cnt / len(prediction_pro)
+    mrr2_cnt = mrr2_cnt / len(prediction_pro)
+    mrr3_cnt = mrr3_cnt / len(prediction_pro)
+    mrr4_cnt = mrr4_cnt / len(prediction_pro)
+    mrr5_cnt = mrr5_cnt / len(prediction_pro)
     map_cnt = map_cnt / len(prediction_pro)
+    map2_cnt = map2_cnt / len(prediction_pro)
+    map3_cnt = map3_cnt / len(prediction_pro)
+    map4_cnt = map4_cnt / len(prediction_pro)
+    map5_cnt = map5_cnt / len(prediction_pro)
     ndcg_cnt = ndcg_cnt / len(prediction_pro)
+    ndcg2_cnt = ndcg2_cnt / len(prediction_pro)
+    ndcg3_cnt = ndcg3_cnt / len(prediction_pro)
+    ndcg4_cnt = ndcg4_cnt / len(prediction_pro)
+    ndcg5_cnt = ndcg5_cnt / len(prediction_pro)
+
     tmp = pipe_lr.score(X_test, y_test)
     acc_sum += tmp
     acc_list.append(tmp)
     print(f'acc: {tmp}')
     print(f'rmv: {rmv_cnt}')
+    print(f'rmv2: {rmv2_cnt}')
+    print(f'rmv3: {rmv3_cnt}')
+    print(f'rmv4: {rmv4_cnt}')
+    print(f'rmv5: {rmv5_cnt}')
     print(f'precision: {precision_cnt}')
     print(f'recall: {recall_cnt}')
     print(f'mrr: {mrr_cnt}')
+    print(f'mrr2: {mrr2_cnt}')
+    print(f'mrr3: {mrr3_cnt}')
+    print(f'mrr4: {mrr4_cnt}')
+    print(f'mrr5: {mrr5_cnt}')
     print(f'map: {map_cnt}')
+    print(f'map2: {map2_cnt}')
+    print(f'map3: {map3_cnt}')
+    print(f'map4: {map4_cnt}')
+    print(f'map5: {map5_cnt}')
     print(f'ndcg: {ndcg_cnt}')
+    print(f'ndcg2: {ndcg2_cnt}')
+    print(f'ndcg3: {ndcg3_cnt}')
+    print(f'ndcg4: {ndcg4_cnt}')
+    print(f'ndcg5: {ndcg5_cnt}')
+
     print(f'binary acc: {binary_acc / binary_cnt}')
 
 else:
@@ -229,12 +316,27 @@ else:
         # res = res.reset_index(drop=True)
 
         rmv_cnt = 0
+        rmv2_cnt = 0
+        rmv3_cnt = 0
+        rmv4_cnt = 0
+        rmv5_cnt = 0
         precision_cnt = 0
         recall_cnt = 0
         mrr_cnt = 0
+        mrr2_cnt = 0
+        mrr3_cnt = 0
+        mrr4_cnt = 0
+        mrr5_cnt = 0
         map_cnt = 0
+        map2_cnt = 0
+        map3_cnt = 0
+        map4_cnt = 0
+        map5_cnt = 0
         ndcg_cnt = 0
-
+        ndcg2_cnt = 0
+        ndcg3_cnt = 0
+        ndcg4_cnt = 0
+        ndcg5_cnt = 0
         binary_acc = 0
         binary_cnt = 0
 
@@ -270,11 +372,27 @@ else:
             # map_list.append(map_k(pad_p, l, 3))
 
             rmv_cnt += rmv(pad_p, l)
+            rmv2_cnt += rmv(pad_p, l, 2)
+            rmv3_cnt += rmv(pad_p, l, 3)
+            rmv4_cnt += rmv(pad_p, l, 4)
+            rmv5_cnt += rmv(pad_p, l, 5)
             precision_cnt += precision_at_k(pad_p, l, 3)
             recall_cnt += recall_at_k(pad_p, l, 3)
-            mrr_cnt += mrr_at_k(pad_p, l, 3)
-            map_cnt += map_at_k(pad_p, l, 3)
-            ndcg_cnt += ndcg_at_k(pad_p, l, 3)
+            mrr_cnt += mrr_at_k(pad_p, l, 1)
+            mrr2_cnt += mrr_at_k(pad_p, l, 2)
+            mrr3_cnt += mrr_at_k(pad_p, l, 3)
+            mrr4_cnt += mrr_at_k(pad_p, l, 4)
+            mrr5_cnt += mrr_at_k(pad_p, l, 5)
+            map_cnt += map_at_k(pad_p, l, 1)
+            map2_cnt += map_at_k(pad_p, l, 2)
+            map3_cnt += map_at_k(pad_p, l, 3)
+            map4_cnt += map_at_k(pad_p, l, 4)
+            map5_cnt += map_at_k(pad_p, l, 5)
+            ndcg_cnt += ndcg_at_k(pad_p, l, 1)
+            ndcg2_cnt += ndcg_at_k(pad_p, l, 2)
+            ndcg3_cnt += ndcg_at_k(pad_p, l, 3)
+            ndcg4_cnt += ndcg_at_k(pad_p, l, 4)
+            ndcg5_cnt += ndcg_at_k(pad_p, l, 5)
 
             # arr = np.array(prediction_pro)
             # print(np.argmax(arr, axis=1))
@@ -288,28 +406,61 @@ else:
             # map.append(metric.MAP(model_list, 3, 1)[0])
 
         rmv_cnt = rmv_cnt / len(prediction_pro)
+        rmv2_cnt = rmv2_cnt / len(prediction_pro)
+        rmv3_cnt = rmv3_cnt / len(prediction_pro)
+        rmv4_cnt = rmv4_cnt / len(prediction_pro)
+        rmv5_cnt = rmv5_cnt / len(prediction_pro)
         precision_cnt = precision_cnt / len(prediction_pro)
         recall_cnt = recall_cnt / len(prediction_pro)
         mrr_cnt = mrr_cnt / len(prediction_pro)
+        mrr2_cnt = mrr2_cnt / len(prediction_pro)
+        mrr3_cnt = mrr3_cnt / len(prediction_pro)
+        mrr4_cnt = mrr4_cnt / len(prediction_pro)
+        mrr5_cnt = mrr5_cnt / len(prediction_pro)
         map_cnt = map_cnt / len(prediction_pro)
+        map2_cnt = map2_cnt / len(prediction_pro)
+        map3_cnt = map3_cnt / len(prediction_pro)
+        map4_cnt = map4_cnt / len(prediction_pro)
+        map5_cnt = map5_cnt / len(prediction_pro)
         ndcg_cnt = ndcg_cnt / len(prediction_pro)
+        ndcg2_cnt = ndcg2_cnt / len(prediction_pro)
+        ndcg3_cnt = ndcg3_cnt / len(prediction_pro)
+        ndcg4_cnt = ndcg4_cnt / len(prediction_pro)
+        ndcg5_cnt = ndcg5_cnt / len(prediction_pro)
+
         tmp = pipe_lr.score(X_test, y_test)
         acc_sum += tmp
         acc_list.append(tmp)
         print(f'epoch{i}, acc: {tmp}')
         print(f'rmv: {rmv_cnt}')
+        print(f'rmv2: {rmv2_cnt}')
+        print(f'rmv3: {rmv3_cnt}')
+        print(f'rmv4: {rmv4_cnt}')
+        print(f'rmv5: {rmv5_cnt}')
         print(f'precision: {precision_cnt}')
         print(f'recall: {recall_cnt}')
         print(f'mrr: {mrr_cnt}')
+        print(f'mrr2: {mrr2_cnt}')
+        print(f'mrr3: {mrr3_cnt}')
+        print(f'mrr4: {mrr4_cnt}')
+        print(f'mrr5: {mrr5_cnt}')
         print(f'map: {map_cnt}')
+        print(f'map2: {map2_cnt}')
+        print(f'map3: {map3_cnt}')
+        print(f'map4: {map4_cnt}')
+        print(f'map5: {map5_cnt}')
         print(f'ndcg: {ndcg_cnt}')
+        print(f'ndcg2: {ndcg2_cnt}')
+        print(f'ndcg3: {ndcg3_cnt}')
+        print(f'ndcg4: {ndcg4_cnt}')
+        print(f'ndcg5: {ndcg5_cnt}')
         print(f'binary acc: {binary_acc / binary_cnt}')
         print('=================')
         # ndcg5_t.append(sum(ndcg5) / len(ndcg5))
         # mrr_t.append(sum(mrr) / len(mrr))
         # map_t.append(sum(map) / len(map))
         if (i + 1) % 10 == 0:
-            with open(os.path.join(model_save_path, f"meta_learner_epoch_{i + 1}.pkl"), 'wb') as model_file:
+            with open(os.path.join(model_save_path, f"{meta}_meta_learner_epoch_{i + 1}.pkl"), 'wb') as model_file:
                 pickle.dump(pipe_lr, model_file)
             print(f'Model saved at epoch {i + 1}.')
 

@@ -201,7 +201,7 @@ if __name__ == '__main__':
         model_GCN = ModelGraphGCN(model_data.num_node_features, 512)
         regression_model = RegressionModel(1024, 1)
 
-        epoch = 60
+        epoch = 50
 
         dataset_GCN.load_state_dict(torch.load(os.path.join(model_save_path, f"dataset_GCN_epoch_{epoch}.pth")))
         model_GCN.load_state_dict(torch.load(os.path.join(model_save_path, f"model_GCN_epoch_{epoch}.pth")))
@@ -259,10 +259,22 @@ if __name__ == '__main__':
         print(res_dict)
 
         rmv_cnt = 0
+        rmv2_cnt = 0
+        rmv3_cnt = 0
+        rmv4_cnt = 0
+        rmv5_cnt = 0
         precision_cnt = 0
         recall_cnt = 0
         mrr_cnt = 0
+        mrr2_cnt = 0
+        mrr3_cnt = 0
+        mrr4_cnt = 0
+        mrr5_cnt = 0
         map_cnt = 0
+        map2_cnt = 0
+        map3_cnt = 0
+        map4_cnt = 0
+        map5_cnt = 0
         ndcg_cnt = 0
         cnt = 0
         p_list = []
@@ -291,11 +303,24 @@ if __name__ == '__main__':
                 elif p_x < p_y and r_x < r_y:
                     binary_acc += 1
 
-            rmv_cnt += rmv(v_predict, v_real_scaled)
+            rmv_cnt += rmv(v_predict, v_real_scaled, 1)
+            rmv2_cnt += rmv(v_predict, v_real_scaled, 2)
+            rmv3_cnt += rmv(v_predict, v_real_scaled, 3)
+            rmv4_cnt += rmv(v_predict, v_real_scaled, 4)
+            rmv5_cnt += rmv(v_predict, v_real_scaled, 5)
+
             precision_cnt += precision_at_k(v_predict, v_real_scaled, 3)
             recall_cnt += recall_at_k(v_predict, v_real_scaled, 3)
-            mrr_cnt += mrr_at_k(v_predict, v_real_scaled, 3)
-            map_cnt += map_at_k(v_predict, v_real_scaled, 3)
+            mrr_cnt += mrr_at_k(v_predict, v_real_scaled, 1)
+            mrr2_cnt += mrr_at_k(v_predict, v_real_scaled, 2)
+            mrr3_cnt += mrr_at_k(v_predict, v_real_scaled, 3)
+            mrr4_cnt += mrr_at_k(v_predict, v_real_scaled, 4)
+            mrr5_cnt += mrr_at_k(v_predict, v_real_scaled, 5)
+            map_cnt += map_at_k(v_predict, v_real_scaled, 1)
+            map2_cnt += map_at_k(v_predict, v_real_scaled, 2)
+            map3_cnt += map_at_k(v_predict, v_real_scaled, 3)
+            map4_cnt += map_at_k(v_predict, v_real_scaled, 4)
+            map5_cnt += map_at_k(v_predict, v_real_scaled, 5)
             ndcg_cnt += ndcg_at_k(v_predict, v_real_scaled, 3)
             cnt += 1
             p_list.append((p_idx, p))
@@ -304,10 +329,22 @@ if __name__ == '__main__':
         # print(f'Average RMV: {sum(rmv_list) / len(rmv_list)}')
         # print(f'MAP: {sum(map_list) / len(map_list)}')
         print(f'RMV: {rmv_cnt / cnt}')
+        print(f'RMV2: {rmv2_cnt / cnt}')
+        print(f'RMV3: {rmv3_cnt / cnt}')
+        print(f'RMV4: {rmv4_cnt / cnt}')
+        print(f'RMV5: {rmv5_cnt / cnt}')
         print(f'Precision: {precision_cnt / cnt}')
         print(f'Recall: {recall_cnt / cnt}')
         print(f'MRR: {mrr_cnt / cnt}')
+        print(f'MRR2: {mrr2_cnt / cnt}')
+        print(f'MRR3: {mrr3_cnt / cnt}')
+        print(f'MRR4: {mrr4_cnt / cnt}')
+        print(f'MRR5: {mrr5_cnt / cnt}')
         print(f'MAP: {map_cnt / cnt}')
+        print(f'MAP2: {map2_cnt / cnt}')
+        print(f'MAP3: {map3_cnt / cnt}')
+        print(f'MAP4: {map4_cnt / cnt}')
+        print(f'MAP5: {map5_cnt / cnt}')
         print(f'NDCG: {ndcg_cnt / cnt}')
         print(f'binary acc: {binary_acc / binary_cnt}')
         print('=====================')
@@ -450,7 +487,15 @@ if __name__ == '__main__':
             precision_cnt = 0
             recall_cnt = 0
             mrr_cnt = 0
+            mrr2_cnt = 0
+            mrr3_cnt = 0
+            mrr4_cnt = 0
+            mrr5_cnt = 0
             map_cnt = 0
+            map2_cnt = 0
+            map3_cnt = 0
+            map4_cnt = 0
+            map5_cnt = 0
             ndcg_cnt = 0
             cnt = 0
             p_list = []
@@ -482,8 +527,17 @@ if __name__ == '__main__':
                 rmv_cnt += rmv(v_predict, v_real_scaled)
                 precision_cnt += precision_at_k(v_predict, v_real_scaled, 3)
                 recall_cnt += recall_at_k(v_predict, v_real_scaled, 3)
-                mrr_cnt += mrr_at_k(v_predict, v_real_scaled, 3)
-                map_cnt += map_at_k(v_predict, v_real_scaled, 3)
+                mrr_cnt += mrr_at_k(v_predict, v_real_scaled, 1)
+                mrr2_cnt += mrr_at_k(v_predict, v_real_scaled, 2)
+                mrr3_cnt += mrr_at_k(v_predict, v_real_scaled, 3)
+                mrr4_cnt += mrr_at_k(v_predict, v_real_scaled, 4)
+                mrr5_cnt += mrr_at_k(v_predict, v_real_scaled, 5)
+                map_cnt += map_at_k(v_predict, v_real_scaled, 1)
+                map2_cnt += map_at_k(v_predict, v_real_scaled, 2)
+                map3_cnt += map_at_k(v_predict, v_real_scaled, 3)
+                map4_cnt += map_at_k(v_predict, v_real_scaled, 4)
+                map5_cnt += map_at_k(v_predict, v_real_scaled, 5)
+
                 ndcg_cnt += ndcg_at_k(v_predict, v_real_scaled, 3)
                 cnt += 1
                 p_list.append((p_idx, p))
@@ -496,7 +550,15 @@ if __name__ == '__main__':
             print(f'Precision: {precision_cnt / cnt}')
             print(f'Recall: {recall_cnt / cnt}')
             print(f'MRR: {mrr_cnt / cnt}')
+            print(f'MRR2: {mrr2_cnt / cnt}')
+            print(f'MRR3: {mrr3_cnt / cnt}')
+            print(f'MRR4: {mrr4_cnt / cnt}')
+            print(f'MRR5: {mrr5_cnt / cnt}')
             print(f'MAP: {map_cnt / cnt}')
+            print(f'MAP2: {map2_cnt / cnt}')
+            print(f'MAP3: {map3_cnt / cnt}')
+            print(f'MAP4: {map4_cnt / cnt}')
+            print(f'MAP5: {map5_cnt / cnt}')
             print(f'NDCG: {ndcg_cnt / cnt}')
             print(f'binary acc: {binary_acc / binary_cnt}')
             print('=====================')

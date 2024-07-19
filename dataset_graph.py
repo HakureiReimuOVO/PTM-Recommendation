@@ -16,7 +16,7 @@ from slice_dataset import get_all_datasets_and_idx
 FEATURE_OUTPUT_PATH = 'result/label_features.npy'
 RATIO_OUTPUT_PATH = 'result/label_ratio.json'
 NUMERIC_FEATURE_OUTPUT_PATH = 'result/dataset_numeric_features.json'
-DATASET_GRAPH_OUTPUT_PATH = 'result/dataset_graph.pkl'
+DATASET_GRAPH_OUTPUT_PATH = 'result/dataset_graph_total.pkl'
 
 
 def get_dataset_feature(dataset_name, features):
@@ -218,16 +218,16 @@ if __name__ == '__main__':
     # with open(DATASET_FEATURE_PATH, 'r') as f:
     #     dataset_feature = json.load(f)
 
-    # get_label_features()
-    # get_label_ratios()
-    # get_numeric_features()
+    get_label_features()
+    get_label_ratios()
+    get_numeric_features()
 
-    # label_features, dataset_ratios, numeric_features = load_data(FEATURE_OUTPUT_PATH, RATIO_OUTPUT_PATH, NUMERIC_FEATURE_OUTPUT_PATH)
-    # print(label_features)
-    # print(dataset_ratios)
-    # print(numeric_features)
-    # G = create_graph(label_features, dataset_ratios, numeric_features)
-    # save_graph(G, DATASET_GRAPH_OUTPUT_PATH)
+    label_features, dataset_ratios, numeric_features = load_data(FEATURE_OUTPUT_PATH, RATIO_OUTPUT_PATH, NUMERIC_FEATURE_OUTPUT_PATH)
+    print(label_features)
+    print(dataset_ratios)
+    print(numeric_features)
+    G = create_graph(label_features, dataset_ratios, numeric_features)
+    save_graph(G, DATASET_GRAPH_OUTPUT_PATH)
 
     G = load_graph(DATASET_GRAPH_OUTPUT_PATH)
     print(G)

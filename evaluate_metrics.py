@@ -81,14 +81,23 @@ def ndcg_at_k(predicted_scores, ground_truth_scores, k):
     return ndcg
 
 
-def rmv(predicted_scores, ground_truth_scores):
-    top1_index = np.argmax(predicted_scores)
-    top1_ground_truth_score = ground_truth_scores[top1_index]
-    max_ground_truth_score = np.max(ground_truth_scores)
-    ratio = top1_ground_truth_score / max_ground_truth_score if max_ground_truth_score > 0 else 0
+def rmv(predicted_scores, ground_truth_scores, k=1):
+    top_k_predicted_indices = np.argsort(predicted_scores)[::-1][:k]
+    top_k_ground_truth_indices = np.argsort(ground_truth_scores)[::-1][:k]
+
+    rmv_values = []
+    for pred_idx, gt_idx in zip(top_k_predicted_indices, top_k_ground_truth_indices):
+        pred_score = ground_truth_scores[pred_idx]
+        gt_score = ground_truth_scores[gt_idx]
+        rmv_value = pred_score / gt_score if gt_score > 0 else 0
+        rmv_values.append(rmv_value)
+
+    avg_rmv = np.mean(rmv_values)
+
     if ifPrint:
-        print("RMV:", ratio)
-    return ratio
+        print("RMV@{}:".format(k), avg_rmv)
+
+    return avg_rmv
 
 
 # 示例数据
