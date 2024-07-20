@@ -22,6 +22,7 @@ def get_dataset_feature_vector(graph, dataset_name):
 
 if __name__ == '__main__':
     G = load_graph(DATASET_GRAPH_OUTPUT_PATH)
+    print(G)
     for dataset_config in dataset_configs:
         items = get_all_datasets_and_idx(dataset_name=dataset_config['name'])
 

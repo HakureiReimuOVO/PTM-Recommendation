@@ -56,8 +56,8 @@ datasets = []
 models = model_configs
 
 # meta = 'img'
-# meta = 'mrm'
-meta = 'sgr'
+meta = 'mrm'
+# meta = 'sgr'
 
 accuracies = extract_accuracies('result/best_accuracies.csv')
 for dataset_config in dataset_configs:
@@ -73,6 +73,7 @@ for dataset_config in dataset_configs:
         elif meta == 'mrm':
             # AutoMRM
             meta_feature = get_mrm_features(dataset_name)
+            print(meta_feature.shape)
         elif meta == 'sgr':
             # AutoSGR
             meta_feature = get_sgr_features(dataset_name)
@@ -164,7 +165,7 @@ print("Training Labels:", train_labels)
 print("Testing Labels:", test_labels)
 
 if fin_test:
-    epoch = 50
+    epoch = 30
     with open(os.path.join(model_save_path, f"{meta}_meta_learner_epoch_{epoch}.pkl"), 'rb') as m:
         pipe_lr = pickle.load(m)
     prediction_pro = pipe_lr.predict_proba(x_fin)

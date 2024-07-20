@@ -289,7 +289,7 @@ if __name__ == '__main__':
 
     if fin_test:
         model = GCN(num_features=data.num_node_features, num_classes=8)
-        epoch = 100
+        epoch = 150
         model.load_state_dict(torch.load(os.path.join(model_save_path, f"classification_GCN_epoch_{epoch}.pth")))
         fin_mask = [False for idx in range(len(G.nodes))]
         for fin_indice in fin_indices:

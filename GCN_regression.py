@@ -201,7 +201,7 @@ if __name__ == '__main__':
         model_GCN = ModelGraphGCN(model_data.num_node_features, 512)
         regression_model = RegressionModel(1024, 1)
 
-        epoch = 50
+        epoch = 90
 
         dataset_GCN.load_state_dict(torch.load(os.path.join(model_save_path, f"dataset_GCN_epoch_{epoch}.pth")))
         model_GCN.load_state_dict(torch.load(os.path.join(model_save_path, f"model_GCN_epoch_{epoch}.pth")))

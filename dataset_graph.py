@@ -16,7 +16,7 @@ from slice_dataset import get_all_datasets_and_idx
 FEATURE_OUTPUT_PATH = 'result/label_features.npy'
 RATIO_OUTPUT_PATH = 'result/label_ratio.json'
 NUMERIC_FEATURE_OUTPUT_PATH = 'result/dataset_numeric_features.json'
-DATASET_GRAPH_OUTPUT_PATH = 'result/dataset_graph_total.pkl'
+DATASET_GRAPH_OUTPUT_PATH = 'result/dataset_graph.pkl'
 
 
 def get_dataset_feature(dataset_name, features):

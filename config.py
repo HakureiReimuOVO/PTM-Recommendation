@@ -18,7 +18,7 @@ if test:
             'name': 'cifar10',
             'image_key': 'img',
             'label_key': 'label',
-            'comb': [2]
+            'comb': [2, 5]
         },
         # {
         #     'name': 'cifar10',
