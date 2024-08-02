@@ -1,3 +1,5 @@
+import time
+
 import clip
 import torch
 import numpy as np
@@ -90,6 +92,7 @@ if __name__ == '__main__':
 
         items = get_all_datasets_and_idx(dataset_name)
         for dataset, _, dataset_comb_name in tqdm(items):
+            print(dataset_comb_name)
             label_dict = dataset.features[label_key].names
             imgs = []
             labels = []
@@ -106,6 +109,8 @@ if __name__ == '__main__':
             sorted_indices = np.argsort(labels)
             sorted_imgs = [imgs[i] for i in sorted_indices]
             sorted_labels = [labels[i] for i in sorted_indices]
-
+            s_time = time.time()
             meta_features = extract_meta_features(sorted_imgs, sorted_labels, preprocessor, model)
+            e_time = time.time()
+            print(f'time:{e_time - s_time}')
             np.save(f'{META_FEATURE_PATH}/{dataset_comb_name}', meta_features)

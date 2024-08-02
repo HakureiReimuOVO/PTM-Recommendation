@@ -3,6 +3,7 @@ test = True
 
 if test:
     root_path = 'preprocessed_datasets_test'
+
     model_configs = [
         'microsoft/resnet-18',  # model.classifier[-1]
         'microsoft/resnet-50',  # model.classifier[-1]
@@ -13,13 +14,72 @@ if test:
         'google/efficientnet-b0',  # model.classifier
         'microsoft/beit-base-patch16-224',  # model.classifier
     ]
+
+    model_configs = [
+        'microsoft/resnet-18',  # model.classifier[-1]
+        'microsoft/resnet-50',  # model.classifier[-1]
+        'facebook/convnextv2-tiny-1k-224',  # model.classifier
+        'microsoft/swin-tiny-patch4-window7-224',  # model.classifier
+        'google/mobilenet_v2_1.0_224',  # model.classifier
+        'google/vit-base-patch16-224',  # model.classifier
+        'google/efficientnet-b0',  # model.classifier
+        'microsoft/beit-base-patch16-224',  # model.classifier
+        'apple/mobilevit-small',  # model.classifier
+        'facebook/convnextv2-tiny-22k-384',  # model.classifier
+        'google/mobilenet_v1_0.75_192',  # model.classifier
+        'microsoft/beit-base-patch16-224-pt22k-ft22k',  # model.classifier
+        'microsoft/dit-base-finetuned-rvlcdip',  # model.classifier
+        'microsoft/swin-base-patch4-window7-224-in22k',  # model.classifier
+        'nateraw/vit-age-classifier',  # model.classifier
+        'nvidia/mit-b0',  # model.classifier
+        'nvidia/mit-b2',  # model.classifier
+    ]
+
+    # 'google/vit-base-patch16-384',  # model.classifier
+        # 'google/vit-large-patch32-384',  # model.classifier
+
+    # model_configs = ['apple/mobilevit-small',  # model.classifier
+    #                  'facebook/convnextv2-tiny-22k-384',  # model.classifier
+    #                  'google/mobilenet_v1_0.75_192',  # model.classifier
+    #                  'microsoft/beit-base-patch16-224-pt22k-ft22k',  # model.classifier
+    #                  'microsoft/dit-base-finetuned-rvlcdip',  # model.classifier
+    #                  'microsoft/swin-base-patch4-window7-224-in22k',  # model.classifier
+    #                  'nateraw/vit-age-classifier',  # model.classifier
+    #                  'nvidia/mit-b0',  # model.classifier
+    #                  'nvidia/mit-b2'  # model.classifier
+    #                  # 'google/vit-base-patch16-384',  # model.classifier
+    #                  # 'google/vit-large-patch32-384',  # model.classifier
+    #                  ]
+
+    # model_configs = [
+    #     'microsoft/resnet-18',  # model.classifier[-1]
+    #     'microsoft/resnet-50',  # model.classifier[-1]
+    #     'facebook/convnextv2-tiny-1k-224',  # model.classifier
+    #     'microsoft/swin-tiny-patch4-window7-224',  # model.classifier
+    #     'google/mobilenet_v2_1.0_224',  # model.classifier
+    #     'google/vit-base-patch16-224',  # model.classifier
+    #     'google/efficientnet-b0',  # model.classifier
+    #     'microsoft/beit-base-patch16-224',  # model.classifier
+    #     'apple/mobilevit-small',  # model.classifier
+    #     'facebook/convnextv2-tiny-22k-384',  # model.classifier
+    #     'google/mobilenet_v1_0.75_192',  # model.classifier
+    #     'microsoft/beit-base-patch16-224-pt22k-ft22k',  # model.classifier
+    #     'microsoft/dit-base-finetuned-rvlcdip',  # model.classifier
+    #     'microsoft/swin-base-patch4-window7-224-in22k',  # model.classifier
+    #     'nateraw/vit-age-classifier',  # model.classifier
+    #     'nvidia/mit-b0',  # model.classifier
+    #     'nvidia/mit-b2',  # model.classifier
+    #     # 'google/vit-base-patch16-384',  # model.classifier
+    #     # 'google/vit-large-patch32-384',  # model.classifier
+    # ]
+
     dataset_configs = [
         {
             'name': 'cifar10',
             'image_key': 'img',
             'label_key': 'label',
             'comb': [2, 5]
-        },
+        }
         # {
         #     'name': 'cifar10',
         #     'image_key': 'img',

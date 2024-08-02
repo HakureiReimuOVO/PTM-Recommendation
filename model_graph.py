@@ -1,23 +1,25 @@
 import json
 import os
+import time
+
 import numpy as np
 import torch
 import torch.nn.functional as F
 import pickle
-from PIL import Image
-from matplotlib import pyplot as plt
-from sklearn.preprocessing import MinMaxScaler
 from torch.utils.data import Dataset, DataLoader
-
 from tqdm import tqdm
 import networkx as nx
-from sklearn.metrics.pairwise import cosine_similarity
-from torchvision import transforms
 
 from model_loader import get_model
 from config import model_configs
 
 # from ptflops import get_model_complexity_info
+
+from PIL import Image
+from matplotlib import pyplot as plt
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics.pairwise import cosine_similarity
+from torchvision import transforms
 
 TINY_IMAGENET_PATH = 'datasets/tiny_imagenet'
 MODEL_GRAPH_OUTPUT_PATH = 'result/model_graph.pkl'
@@ -165,7 +167,7 @@ def get_model_features():
     print(len(dataset))
 
     # Test
-    # dataset = torch.utils.data.Subset(dataset, range(32))
+    dataset = torch.utils.data.Subset(dataset, range(128))
 
     data_loader = DataLoader(dataset, batch_size=32, shuffle=False)
     model_features = {}
@@ -175,7 +177,10 @@ def get_model_features():
 
     for model_config in model_configs:
         model = get_model(model_config)
+        s_time = time.time()
         feature = extract_features(model_config, model, data_loader)
+        e_time = time.time()
+        print(f"total time: {e_time - s_time}")
         pooled_feature = average_pool_to_fixed_length(feature, target_length=512)
         norm = np.linalg.norm(pooled_feature, axis=-1, keepdims=True)
         norm_feature = pooled_feature / norm
@@ -187,6 +192,29 @@ def get_model_features():
         # print(f'Total params: {params}, Flops: {flops}')
 
     np.save(MODEL_FEATURE_OUTPUT_PATH, model_features)
+
+
+def create_numeric_graph(model_names, model_features, numeric_features, model_similarities):
+    G = nx.Graph()
+
+    numeric_features_dim = 4
+    num_feats = np.array([[data["params"], data["flops"]] for data in numeric_features.values()])
+    scaler = MinMaxScaler()
+    normalized_features = scaler.fit_transform(num_feats)
+    expanded_features = np.repeat(normalized_features, numeric_features_dim, axis=1)
+    num_feat_dict = {name: expanded_features[i] for i, name in enumerate(numeric_features.keys())}
+
+    for model_name in model_names:
+        G.add_node(model_name)
+        G.nodes[model_name]['feature'] = num_feat_dict[model_name]
+        # G.nodes[model_name]['feature'] = model_features[model_names]
+
+    for i in range(len(model_names)):
+        for j in range(i + 1, len(model_names)):
+            weight = model_similarities[i, j]
+            G.add_edge(model_names[i], model_names[j], weight=weight)
+
+    return G
 
 
 def load_data(feature_path, numeric_feature_path):
@@ -227,10 +255,10 @@ if __name__ == '__main__':
 
     similarity_matrix = cosine_similarity(model_features_matrix)
 
-    G = create_graph(model_names=model_configs, model_features=model_features, numeric_features=numeric_features,
+    G = create_numeric_graph(model_names=model_configs, model_features=model_features, numeric_features=numeric_features,
                      model_similarities=similarity_matrix)
 
     save_graph(G, MODEL_GRAPH_OUTPUT_PATH)
 
-    # G = load_graph(MODEL_GRAPH_OUTPUT_PATH)
-    # print(G)
+    G = load_graph(MODEL_GRAPH_OUTPUT_PATH)
+    print(G)

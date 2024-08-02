@@ -1,5 +1,6 @@
 import os
 import pickle
+import time
 from collections import Counter
 
 import numpy as np
@@ -55,8 +56,8 @@ y_list = []
 datasets = []
 models = model_configs
 
-# meta = 'img'
-meta = 'mrm'
+meta = 'img'
+# meta = 'mrm'
 # meta = 'sgr'
 
 accuracies = extract_accuracies('result/best_accuracies.csv')
@@ -124,7 +125,7 @@ map_t = []
 
 # Select the meta learner to use Ensemble learning or not according to the task
 # model = RandomForestClassifier()
-# model = BaggingClassifier(base_estimator=SVC(probability=True), max_samples=0.8, max_features=0.8, n_estimators=1,
+# model = BaggingClassifier(base_estimator=SVC(probability=True), max_samples=0.8, max_features=0.8, n_estimators=100,
 #                           bootstrap_features=True, n_jobs=-1)
 model = XGBClassifier(random_state=1, learning_rate=0.1, use_label_encoder=False)
 pipe_lr = make_pipeline(StandardScaler(), model)
@@ -165,10 +166,13 @@ print("Training Labels:", train_labels)
 print("Testing Labels:", test_labels)
 
 if fin_test:
-    epoch = 30
+    epoch = 50
     with open(os.path.join(model_save_path, f"{meta}_meta_learner_epoch_{epoch}.pkl"), 'rb') as m:
         pipe_lr = pickle.load(m)
+    start_time = time.time()
     prediction_pro = pipe_lr.predict_proba(x_fin)
+    end_time = time.time()
+    print(f"Total Time: {end_time - start_time} seconds")
     rmv_cnt = 0
     rmv2_cnt = 0
     rmv3_cnt = 0
@@ -204,7 +208,7 @@ if fin_test:
         dataset = datasets[x]
 
         p = prediction_pro[x]
-        pad_p = padding(unique_y, p, k=8)
+        pad_p = padding(unique_y, p, k=len(model_configs))
         l = list(accuracies[dataset].values())
 
         for comb in combs:
@@ -244,12 +248,11 @@ if fin_test:
         ndcg4_cnt += ndcg_at_k(pad_p, l, 4)
         ndcg5_cnt += ndcg_at_k(pad_p, l, 5)
 
-
     rmv_cnt = rmv_cnt / len(prediction_pro)
     rmv2_cnt = rmv2_cnt / len(prediction_pro)
     rmv3_cnt = rmv3_cnt / len(prediction_pro)
     rmv4_cnt = rmv4_cnt / len(prediction_pro)
-    rmv5_cnt = rmv5_cnt/ len(prediction_pro)
+    rmv5_cnt = rmv5_cnt / len(prediction_pro)
     precision_cnt = precision_cnt / len(prediction_pro)
     recall_cnt = recall_cnt / len(prediction_pro)
     mrr_cnt = mrr_cnt / len(prediction_pro)
@@ -298,6 +301,7 @@ if fin_test:
     print(f'binary acc: {binary_acc / binary_cnt}')
 
 else:
+    s_time = time.time()
     for i in range(100):
         # indices = np.arange(y_list.shape[0])
         # [indices_train, indices_test, y_train, y_test] = train_test_split(indices, y_list, test_size=0.20, stratify=y_list)
@@ -354,7 +358,7 @@ else:
             # rmv_list.append(acc / max_acc)
 
             p = prediction_pro[x]
-            pad_p = padding(unique_y, p, k=8)
+            pad_p = padding(unique_y, p, k=len(model_configs))
             l = list(accuracies[dataset].values())
 
             for comb in combs:
@@ -464,6 +468,7 @@ else:
             with open(os.path.join(model_save_path, f"{meta}_meta_learner_epoch_{i + 1}.pkl"), 'wb') as model_file:
                 pickle.dump(pipe_lr, model_file)
             print(f'Model saved at epoch {i + 1}.')
-
+    e_time = time.time()
+    print(f'total time:{e_time - s_time}')
     acc_avg = acc_sum / len(acc_list)
     print("acc: ", acc_avg)

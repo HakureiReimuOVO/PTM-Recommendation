@@ -1,4 +1,5 @@
 import itertools
+import time
 
 import numpy as np
 import torch
@@ -99,7 +100,6 @@ class ModelGraphGCN(torch.nn.Module):
 #         # x = self.conv4(x, edge_index, edge_weight=edge_weight)
 #         # return x
 #
-#
 # class ModelGraphGCN(torch.nn.Module):
 #     def __init__(self, num_features, output_size):
 #         super(ModelGraphGCN, self).__init__()
@@ -197,11 +197,13 @@ if __name__ == '__main__':
     model_data = graph_to_torch_geometric(G_model)
 
     if fin_test:
+        total_time = 0
+
         dataset_GCN = DatasetGraphGCN(dataset_data.num_node_features, 512)
         model_GCN = ModelGraphGCN(model_data.num_node_features, 512)
         regression_model = RegressionModel(1024, 1)
 
-        epoch = 90
+        epoch = 10
 
         dataset_GCN.load_state_dict(torch.load(os.path.join(model_save_path, f"dataset_GCN_epoch_{epoch}.pth")))
         model_GCN.load_state_dict(torch.load(os.path.join(model_save_path, f"model_GCN_epoch_{epoch}.pth")))
@@ -234,29 +236,72 @@ if __name__ == '__main__':
         test_loss = 0
 
         with torch.no_grad():
+            start_time = time.time()
             dataset_features = dataset_GCN(dataset_data)
             model_features = model_GCN(model_data)
+            end_time = time.time()
+            total_time += end_time - start_time
 
             res_dict = {}
 
+            # Batch
+
+            dataset_names = set()
             for dataset_name, model_name in fin_tuples:
-                f_dataset = dataset_features[dataset_node_to_index[dataset_name]]
-                f_model = model_features[model_node_to_index[model_name]]
+                dataset_names.add(dataset_name)
 
-                combined_features = torch.cat([f_dataset, f_model], dim=0)
+            for dataset_name in dataset_names:
+                batch_features = []
+                targets = []
 
-                target = torch.tensor([acc[dataset_name][model_name]], dtype=torch.float)
-                output = regression_model(combined_features)
+                for model_name in model_configs:
+                    f_dataset = dataset_features[dataset_node_to_index[dataset_name]]
+                    f_model = model_features[model_node_to_index[model_name]]
+                    combined_features = torch.cat([f_dataset, f_model], dim=0)
 
-                real_target = scaler.inverse_transform(np.array(target).reshape(1, 1))
-                real_output = scaler.inverse_transform(np.array(output).reshape(1, 1))
+                    batch_features.append(combined_features)
+                    targets.append(torch.tensor([acc[dataset_name][model_name]], dtype=torch.float))
 
-                if dataset_name not in res_dict:
-                    res_dict[dataset_name] = {}
+                if batch_features:
+                    batch_features = torch.stack(batch_features)
+                    targets = torch.stack(targets)
 
-                res_dict[dataset_name][model_name] = real_output[0][0]
+                    start_time = time.time()
+                    outputs = regression_model(batch_features)
+                    end_time = time.time()
+                    total_time += end_time - start_time
+
+                    real_targets = scaler.inverse_transform(targets.numpy().reshape(-1, 1))
+                    real_outputs = scaler.inverse_transform(outputs.numpy().reshape(-1, 1))
+
+                    for idx, model_name in enumerate(model_configs):
+                        if dataset_name not in res_dict:
+                            res_dict[dataset_name] = {}
+                        res_dict[dataset_name][model_name] = real_outputs[idx][0]
+
+            # for dataset_name, model_name in fin_tuples:
+            #     f_dataset = dataset_features[dataset_node_to_index[dataset_name]]
+            #     f_model = model_features[model_node_to_index[model_name]]
+            #
+            #     combined_features = torch.cat([f_dataset, f_model], dim=0)
+            #
+            #     target = torch.tensor([acc[dataset_name][model_name]], dtype=torch.float)
+            #
+            #     start_time = time.time()
+            #     output = regression_model(combined_features)
+            #     end_time = time.time()
+            #     total_time += end_time - start_time
+            #
+            #     real_target = scaler.inverse_transform(np.array(target).reshape(1, 1))
+            #     real_output = scaler.inverse_transform(np.array(output).reshape(1, 1))
+            #
+            #     if dataset_name not in res_dict:
+            #         res_dict[dataset_name] = {}
+            #
+            #     res_dict[dataset_name][model_name] = real_output[0][0]
 
         print(res_dict)
+        print(f"total time: {total_time}")
 
         rmv_cnt = 0
         rmv2_cnt = 0
@@ -390,11 +435,22 @@ if __name__ == '__main__':
 
         train_tuples = []
         test_tuples = []
+
+        # Dataset
         for input_tuple in input_tuples:
             if dataset_names.index(input_tuple[0]) in train_indices:
                 train_tuples.append(input_tuple)
             elif dataset_names.index(input_tuple[0]) in test_indices:
                 test_tuples.append(input_tuple)
+
+        # Model
+        # train_indices = [0, 1, 2, 3, 4, 6, 7]
+        # test_indices = [5]
+        # for input_tuple in input_tuples:
+        #     if model_configs.index(input_tuple[1]) in train_indices:
+        #         train_tuples.append(input_tuple)
+        #     elif model_configs.index(input_tuple[1]) in test_indices:
+        #         test_tuples.append(input_tuple)
 
         # gss = GroupShuffleSplit(test_size=0.2, n_splits=1, random_state=42)
         # train_idx, test_idx = next(gss.split(input_tuples, groups=dataset_names))
@@ -438,7 +494,7 @@ if __name__ == '__main__':
 
             print(f'Epoch {epoch + 1}/{num_epochs}, Training loss: {loss}')
 
-            if (epoch + 1) % 10 == 0:
+            if (epoch + 1) % 5 == 0:
                 torch.save(dataset_GCN.state_dict(),
                            os.path.join(model_save_path, f"dataset_GCN_epoch_{epoch + 1}.pth"))
                 torch.save(model_GCN.state_dict(), os.path.join(model_save_path, f"model_GCN_epoch_{epoch + 1}.pth"))
@@ -537,7 +593,6 @@ if __name__ == '__main__':
                 map3_cnt += map_at_k(v_predict, v_real_scaled, 3)
                 map4_cnt += map_at_k(v_predict, v_real_scaled, 4)
                 map5_cnt += map_at_k(v_predict, v_real_scaled, 5)
-
                 ndcg_cnt += ndcg_at_k(v_predict, v_real_scaled, 3)
                 cnt += 1
                 p_list.append((p_idx, p))

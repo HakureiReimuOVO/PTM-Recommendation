@@ -1,4 +1,5 @@
 import itertools
+import time
 
 import numpy as np
 import torch
@@ -118,7 +119,11 @@ def from_networkx_to_torch_geometric(G, node_to_index, type_to_index, score_dict
 def test(model, data, test_mask):
     model.eval()
     with torch.no_grad():
+        start_time = time.time()
         out = model(data)[test_mask]
+        end_time = time.time()
+        print(f"Total Time: {end_time - start_time} seconds")
+
         real = data.y[test_mask]
 
         rmv_cnt = 0
@@ -280,7 +285,7 @@ if __name__ == '__main__':
                 # vec = accuracies_to_classification_vector(acc)
                 score_dict[node] = vec
 
-    data = from_networkx_to_torch_geometric(G, node_to_index, type_to_index, score_dict, num_classes=8)
+    data = from_networkx_to_torch_geometric(G, node_to_index, type_to_index, score_dict, num_classes=len(model_configs))
 
     label_cnt = 0
     for node in G.nodes():
@@ -288,8 +293,8 @@ if __name__ == '__main__':
             label_cnt += 1
 
     if fin_test:
-        model = GCN(num_features=data.num_node_features, num_classes=8)
-        epoch = 150
+        model = GCN(num_features=data.num_node_features, num_classes=len(model_configs))
+        epoch = 100
         model.load_state_dict(torch.load(os.path.join(model_save_path, f"classification_GCN_epoch_{epoch}.pth")))
         fin_mask = [False for idx in range(len(G.nodes))]
         for fin_indice in fin_indices:
@@ -297,7 +302,7 @@ if __name__ == '__main__':
         fin_mask = torch.tensor(fin_mask, dtype=torch.bool)
         test(model, data, fin_mask)
     else:
-        model = GCN(num_features=data.num_node_features, num_classes=8)
+        model = GCN(num_features=data.num_node_features, num_classes=len(model_configs))
         optimizer = Adam(model.parameters(), lr=1e-3)
         scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True)
 
@@ -319,11 +324,14 @@ if __name__ == '__main__':
         test_mask = torch.tensor(test_mask, dtype=torch.bool)
 
         for epoch in range(200):
+            s_time = time.time()
             loss = train(model, data, optimizer, criterion, train_mask)
             test(model, data, test_mask)
             print(f'Epoch {epoch + 1}: Loss {loss:.4f}')
             # print(f'Epoch {epoch + 1}: Loss {loss:.4f}, Test Accuracy: {accuracy * 100:.2f}%, RMV: {rmv * 100}%')
             scheduler.step(loss)
+            e_time = time.time()
+            print(f'time: {e_time - s_time}')
             if (epoch + 1) % 10 == 0:
                 torch.save(model.state_dict(),
                            os.path.join(model_save_path, f"classification_GCN_epoch_{epoch + 1}.pth"))

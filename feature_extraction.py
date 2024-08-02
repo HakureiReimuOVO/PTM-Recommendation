@@ -61,6 +61,6 @@ def get_dataset_features(dataset_name):
 
 
 if __name__ == '__main__':
-    # _extract_features_by_resnet()
+    _extract_features_by_resnet()
     # features = get_dataset_features('cifar10')
     pass
